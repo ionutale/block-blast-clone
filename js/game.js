@@ -25,6 +25,7 @@ export function createGame(canvas, { onScore, onGameOver, onPlacement, onInvalid
   let levelConfig = null;
   let movesLeft = 0;
   let linesCleared = 0;
+  let levelDone = false;
 
   function collectCells(lines) {
     const cells = [];
@@ -72,7 +73,7 @@ export function createGame(canvas, { onScore, onGameOver, onPlacement, onInvalid
   setupInput(canvas, {
     hitTestTray: (x, y) => renderer.hitTestTray(x, y),
     onDragStart: (x, y) => {
-      if (gameOver || clearing) return;
+      if (gameOver || clearing || levelDone) return;
       const pieceIndex = renderer.hitTestTray(x, y);
       const piece = tray.pieces[pieceIndex];
       if (!piece || piece.used) return;
@@ -110,8 +111,10 @@ export function createGame(canvas, { onScore, onGameOver, onPlacement, onInvalid
           ? linesCleared >= levelConfig.goal.target
           : score >= levelConfig.goal.target;
         if (met) {
+          levelDone = true;
           if (onLevelComplete) onLevelComplete({ stars: calcStars(levelConfig, movesLeft), score, movesLeft });
         } else if (movesLeft <= 0) {
+          levelDone = true;
           if (onLevelFailed) onLevelFailed();
         }
       }
@@ -142,6 +145,7 @@ export function createGame(canvas, { onScore, onGameOver, onPlacement, onInvalid
     drag = null;
     clearing = null;
     gameOver = false;
+    levelDone = false;
     if (onScore) onScore(0);
   }
 
@@ -156,6 +160,7 @@ export function createGame(canvas, { onScore, onGameOver, onPlacement, onInvalid
     levelConfig = level;
     movesLeft = level.moves;
     linesCleared = 0;
+    levelDone = false;
     restart();
   }
 

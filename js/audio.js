@@ -22,6 +22,8 @@ export function createAudio() {
   const buffers = new Map();
   let musicBuffer = null;
   let musicSource = null;
+  let musicVolume = 0.5;
+  let sfxVolume = 1;
 
   try {
     muted = window.localStorage.getItem(MUTE_KEY) === '1';
@@ -39,10 +41,10 @@ export function createAudio() {
       master.gain.value = muted ? 0 : 1;
       master.connect(ctx.destination);
       sfxGain = ctx.createGain();
-      sfxGain.gain.value = 1;
+      sfxGain.gain.value = sfxVolume;
       sfxGain.connect(master);
       musicGain = ctx.createGain();
-      musicGain.gain.value = 0.5;
+      musicGain.gain.value = musicVolume;
       musicGain.connect(master);
       return true;
     } catch {
@@ -152,9 +154,11 @@ export function createAudio() {
   return {
     unlock, place, clear, gameOver, invalid, newTray, combo: () => play('combo'), boardFull,
     setMusicVolume: (v) => {
+      musicVolume = v;
       if (musicGain) musicGain.gain.value = v;
     },
     setSfxVolume: (v) => {
+      sfxVolume = v;
       if (sfxGain) sfxGain.gain.value = v;
     },
     toggle,
