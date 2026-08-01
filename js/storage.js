@@ -72,8 +72,11 @@ export function loadProgress() {
 
 export function recordLevelResult(levelId, stars) {
   const p = loadProgress()
-  const prevBest = p.stars[levelId] || 0
-  p.stars[levelId] = Math.max(prevBest, stars)
+  const starMap = p.stars && typeof p.stars === 'object' ? p.stars : {}
+  const prevBest = starMap[levelId] || 0
+  starMap[levelId] = Math.max(prevBest, stars)
+  p.stars = starMap
+  p.unlocked = typeof p.unlocked === 'number' ? p.unlocked : 1
   let newlyUnlocked = false
   if (levelId === p.unlocked) {
     p.unlocked += 1

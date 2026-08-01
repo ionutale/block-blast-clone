@@ -57,6 +57,15 @@ test('recordLevelResult stores best stars and unlocks next', () => {
   assert.equal(r3.newlyUnlocked, false, 'already unlocked')
 })
 
+test('recordLevelResult survives corrupt-but-parseable progress', () => {
+  store.set('block-blast-progress', JSON.stringify({ unlocked: '5', stars: null }))
+  const r = recordLevelResult(1, 2)
+  assert.equal(r.newlyUnlocked, true)
+  const p = loadProgress()
+  assert.equal(p.unlocked, 2)
+  assert.equal(p.stars[1], 2)
+})
+
 test('clearAll wipes progress but keeps player name', () => {
   savePlayerName('Abi')
   recordLevelResult(1, 3)
