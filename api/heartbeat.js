@@ -1,11 +1,11 @@
-import { kvConfigured, setPresence } from './_kv.js';
+import { dbConfigured, setPresence } from './_db.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     res.status(405).end();
     return;
   }
-  if (!kvConfigured()) {
+  if (!dbConfigured()) {
     res.status(503).json({ error: 'storage not configured' });
     return;
   }

@@ -1,8 +1,8 @@
-import { kvConfigured, countPresence } from './_kv.js';
+import { dbConfigured, countPresence } from './_db.js';
 
 export default async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store');
-  if (!kvConfigured()) {
+  if (!dbConfigured()) {
     res.status(503).json({ error: 'storage not configured' });
     return;
   }
