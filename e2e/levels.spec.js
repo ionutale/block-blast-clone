@@ -25,7 +25,7 @@ test('completing level 1 unlocks level 2 and persists stars', async ({ page }) =
   // Fill row 7: 5-piece at cols 0-4, 3-piece at cols 5-7 -> one line
   await dragPiece(page, 0, await pointForCell(page, { row: 7, col: 0 }));
   await dragPiece(page, 1, await pointForCell(page, { row: 7, col: 5 }));
-  await page.waitForTimeout(400);
+  await expect.poll(async () => (await state(page)).board[7].every((c) => c === null)).toBe(true);
 
   // Fill row 6 the same way -> second line -> level complete
   await setTray(page, [
