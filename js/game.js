@@ -63,7 +63,7 @@ export function createGame(canvas, { onScore, onGameOver } = {}) {
   setupInput(canvas, {
     hitTestTray: (x, y) => renderer.hitTestTray(x, y),
     onDragStart: (x, y) => {
-      if (gameOver) return;
+      if (gameOver || clearing) return;
       const pieceIndex = renderer.hitTestTray(x, y);
       const piece = tray.pieces[pieceIndex];
       if (!piece || piece.used) return;
