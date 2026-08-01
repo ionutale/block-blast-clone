@@ -38,6 +38,10 @@ export function createRenderer(canvas) {
   let lastClearing = false;
   let lastNow = performance.now();
 
+  let shake = 0;
+  let popups = [];
+  let lastScore = 0;
+
   const twinkles = [];
   for (let i = 0; i < TWINKLE_COUNT; i++) {
     twinkles.push({
@@ -333,6 +337,34 @@ export function createRenderer(canvas) {
     pops.push({ x, y, color: color || '#ffffff', start: performance.now(), duration: POP_DURATION });
   }
 
+  function spawnPopup(x, y, text, color, size = 22) {
+    popups.push({ x, y, text, color, size, born: performance.now(), life: 900 });
+  }
+
+  function drawPopups() {
+    for (let i = popups.length - 1; i >= 0; i--) {
+      const p = popups[i];
+      const t = (performance.now() - p.born) / p.life;
+      if (t >= 1) {
+        popups.splice(i, 1);
+        continue;
+      }
+      const rise = t * 40;
+      const alpha = 1 - t * t;
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.font = `800 ${p.size}px system-ui, sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.lineWidth = 4;
+      ctx.strokeStyle = 'rgba(255,255,255,0.85)';
+      ctx.strokeText(p.text, p.x, p.y - rise);
+      ctx.fillStyle = p.color;
+      ctx.fillText(p.text, p.x, p.y - rise);
+      ctx.restore();
+    }
+  }
+
   function updateEffects(board, now) {
     if (lastBoard) {
       for (let r = 0; r < SIZE; r++) {
@@ -362,9 +394,21 @@ export function createRenderer(canvas) {
 
   function updateClearing(state) {
     if (state.clearing && !lastClearing) {
-      for (const { row, col } of state.clearing.cells) {
+      const lines = state.clearing.lines.rows.length + state.clearing.lines.cols.length;
+      const cells = state.clearing.cells;
+      for (const { row, col } of cells) {
         const { x, y } = cellCenter(row, col);
-        spawnParticles(x, y, null, 4);
+        spawnParticles(x, y, null, lines >= 2 ? 8 : 5);
+      }
+      const cx = cells.reduce((s, c) => s + cellCenter(c.row, c.col).x, 0) / cells.length;
+      const cy = cells.reduce((s, c) => s + cellCenter(c.row, c.col).y, 0) / cells.length;
+      const gained = state.score - lastScore;
+      if (gained > 0) spawnPopup(cx, cy, `+${gained}`, '#ff2e63', 22);
+      if (lines >= 2) {
+        spawnPopup(cx, cy - layout.cell * 1.5, `COMBO ×${lines}`, '#ff7a00', 26);
+        shake = Math.min(16, 6 + lines * 4);
+      } else {
+        shake = Math.min(10, 4 + lines * 2);
       }
     }
     lastClearing = Boolean(state.clearing);
@@ -465,6 +509,9 @@ export function createRenderer(canvas) {
     lastNow = now;
 
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    if (shake > 0.2) {
+      ctx.translate((Math.random() - 0.5) * shake, (Math.random() - 0.5) * shake);
+    }
     drawBackground(now);
     drawTwinkles();
     drawBoardPanel();
@@ -479,9 +526,12 @@ export function createRenderer(canvas) {
       ctx.fillRect(0, 0, w, h);
     }
 
+    drawPopups();
     updateEffects(state.board, now);
     updateClearing(state);
     stepParticles(dt);
+    shake = Math.max(0, shake * (1 - 8 * dt));
+    lastScore = state.score;
     if (particles.length > MAX_PARTICLES) particles.splice(0, particles.length - MAX_PARTICLES);
   }
 
