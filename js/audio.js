@@ -151,6 +151,12 @@ export function createAudio() {
 
   return {
     unlock, place, clear, gameOver, invalid, newTray, combo: () => play('combo'), boardFull,
+    setMusicVolume: (v) => {
+      if (musicGain) musicGain.gain.value = v;
+    },
+    setSfxVolume: (v) => {
+      if (sfxGain) sfxGain.gain.value = v;
+    },
     toggle,
     isMuted: () => muted,
   };

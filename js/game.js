@@ -6,12 +6,13 @@ import {
 import { createTray, markUsed, allUsed, unusedPieces } from './tray.js';
 import { scorePlacement } from './scoring.js';
 import { countCells } from './shapes.js';
+import { calcStars } from './levels.js';
 
 function clamp(v, lo, hi) {
   return Math.max(lo, Math.min(hi, v));
 }
 
-export function createGame(canvas, { onScore, onGameOver, onPlacement, onInvalid, onNewTray, debug } = {}) {
+export function createGame(canvas, { onScore, onGameOver, onPlacement, onInvalid, onNewTray, onMovesLeft, onLevelComplete, onLevelFailed, debug } = {}) {
   const renderer = createRenderer(canvas);
   let board = createBoard();
   let tray = createTray();
@@ -20,6 +21,10 @@ export function createGame(canvas, { onScore, onGameOver, onPlacement, onInvalid
   let clearing = null;
   let gameOver = false;
   let rafId = null;
+  let mode = 'endless';
+  let levelConfig = null;
+  let movesLeft = 0;
+  let linesCleared = 0;
 
   function collectCells(lines) {
     const cells = [];
@@ -44,6 +49,7 @@ export function createGame(canvas, { onScore, onGameOver, onPlacement, onInvalid
   }
 
   function checkGameOver() {
+    if (mode !== 'endless') return;
     if (anyPlacementPossible(board, remainingShapes())) return;
     gameOver = true;
     if (onGameOver) onGameOver(score);
@@ -96,6 +102,19 @@ export function createGame(canvas, { onScore, onGameOver, onPlacement, onInvalid
       score += scorePlacement(countCells(piece.shape), lines.rows.length + lines.cols.length);
       if (onScore) onScore(score);
       if (onPlacement) onPlacement(lines.rows.length + lines.cols.length);
+      if (mode === 'challenge') {
+        movesLeft -= 1;
+        linesCleared += lines.rows.length + lines.cols.length;
+        if (onMovesLeft) onMovesLeft(movesLeft);
+        const met = levelConfig.goal.type === 'lines'
+          ? linesCleared >= levelConfig.goal.target
+          : score >= levelConfig.goal.target;
+        if (met) {
+          if (onLevelComplete) onLevelComplete({ stars: calcStars(levelConfig, movesLeft), score, movesLeft });
+        } else if (movesLeft <= 0) {
+          if (onLevelFailed) onLevelFailed();
+        }
+      }
       board = placed;
       finishPlacement(piece.id, lines);
     },
@@ -112,6 +131,7 @@ export function createGame(canvas, { onScore, onGameOver, onPlacement, onInvalid
   }
 
   function start() {
+    if (rafId !== null) return;
     rafId = requestAnimationFrame(frame);
   }
 
@@ -125,12 +145,35 @@ export function createGame(canvas, { onScore, onGameOver, onPlacement, onInvalid
     if (onScore) onScore(0);
   }
 
+  function startEndless() {
+    mode = 'endless';
+    levelConfig = null;
+    restart();
+  }
+
+  function startChallenge(level) {
+    mode = 'challenge';
+    levelConfig = level;
+    movesLeft = level.moves;
+    linesCleared = 0;
+    restart();
+  }
+
+  function stop() {
+    if (rafId !== null) {
+      cancelAnimationFrame(rafId);
+      rafId = null;
+    }
+  }
+
   function getState() {
     return {
       board: board.map((r) => [...r]),
       tray: { pieces: tray.pieces.map((p) => ({ id: p.id, shape: p.shape, color: p.color, used: p.used })) },
       score,
       gameOver,
+      mode,
+      movesLeft,
       layout: renderer.getLayout(),
     };
   }
@@ -150,7 +193,7 @@ export function createGame(canvas, { onScore, onGameOver, onPlacement, onInvalid
     board = matrix.map((r) => [...r]);
   }
 
-  const api = { start, restart };
+  const api = { start, restart, startEndless, startChallenge, stop };
   if (debug) {
     api.debug = { getState, setTray, setBoard };
   }
