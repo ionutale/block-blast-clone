@@ -22,6 +22,12 @@ const game = createGame(canvas, {
     if (lines > 0) audio.clear(lines);
     else audio.place();
   },
+  onInvalid: () => {
+    if (audio) audio.invalid();
+  },
+  onNewTray: () => {
+    if (audio) audio.newTray();
+  },
   onGameOver: (s) => {
     finalScoreEl.textContent = String(s);
     overlay.classList.remove('hidden');
