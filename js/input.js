@@ -25,6 +25,12 @@ export function setupInput(canvas, handlers) {
     handlers.onDragEnd(e.clientX, e.clientY);
   }
 
+  canvas.addEventListener('lostpointercapture', (e) => {
+    if (e.pointerId !== pointerId) return;
+    dragging = false;
+    pointerId = null;
+  });
+
   canvas.addEventListener('pointerup', end);
   canvas.addEventListener('pointercancel', end);
 }
