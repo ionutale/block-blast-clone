@@ -546,15 +546,18 @@ Replace the whole `updateEffects` function with:
     lastBoard = board;
     if (state.drag && now - lastTrail > 45) {
       lastTrail = now;
+      const rect = canvas.getBoundingClientRect();
       spawnParticles(
-        state.drag.x + (Math.random() - 0.5) * 24,
-        state.drag.y + (Math.random() - 0.5) * 24,
+        state.drag.x - rect.left + (Math.random() - 0.5) * 24,
+        state.drag.y - rect.top + (Math.random() - 0.5) * 24,
         null,
         1
       );
     }
   }
 ```
+
+(Note: `state.drag.x/y` are viewport client coordinates — must convert to canvas space via `canvas.getBoundingClientRect()`, same as `getCellAt`/`drawDrag` do. `canvas` is the factory parameter, in scope.)
 
 - [ ] **Step 3: Fix the call site + add `lastTrail` var**
 
