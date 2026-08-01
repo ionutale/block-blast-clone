@@ -1,5 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { scorePlacement } from './scoring.js';
 import { LEVELS, calcStars, getLevel } from './levels.js';
 
 test('LEVELS has 20 levels with sequential ids', () => {
@@ -26,4 +27,20 @@ test('star math: 1 star for completion, 2 with moves left, 3 at a third of budge
 test('getLevel finds levels and returns undefined for unknown', () => {
   assert.equal(getLevel(5).moves, LEVELS[4].moves);
   assert.equal(getLevel(99), undefined);
+});
+
+test('score goals are reachable given move budgets', () => {
+  for (const l of LEVELS) {
+    if (l.goal.type !== 'score') continue;
+    assert.ok(l.goal.target <= 20 * l.moves,
+      `level ${l.id}: ${l.goal.target} pts in ${l.moves} moves is unreachable`);
+  }
+});
+
+test('key level values are pinned', () => {
+  assert.equal(getLevel(1).moves, 8);
+  assert.equal(getLevel(1).goal.target, 2);
+  assert.deepEqual(getLevel(3).goal, { type: 'score', target: 150 });
+  assert.equal(getLevel(20).goal.target, 15);
+  assert.equal(getLevel(20).moves, 28);
 });
