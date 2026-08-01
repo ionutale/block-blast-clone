@@ -22,6 +22,12 @@ function lighten(hex, f) {
   return `rgb(${mix((n >> 16) & 255)},${mix((n >> 8) & 255)},${mix(n & 255)})`;
 }
 
+function shade(hex, f) {
+  const n = parseInt(hex.slice(1), 16);
+  const mix = (v) => Math.round(v * (1 - f));
+  return `rgb(${mix((n >> 16) & 255)},${mix((n >> 8) & 255)},${mix(n & 255)})`;
+}
+
 export function createRenderer(canvas) {
   const ctx = canvas.getContext('2d');
   let layout = { dpr: 1, w: 0, h: 0, cell: 0, boardX: 0, boardY: 0, trayY: 0 };
@@ -116,38 +122,46 @@ export function createRenderer(canvas) {
     ctx.save();
     ctx.globalAlpha = alpha;
     const r = Math.max(3, size * 0.18);
-    if (style === 'raised') {
-      ctx.globalAlpha = alpha * 0.22;
-      ctx.beginPath();
-      ctx.roundRect(x - size * 0.04, y - size * 0.04, size * 1.08, size * 1.08, r + 1);
-      ctx.fillStyle = color;
-      ctx.fill();
-      ctx.globalAlpha = alpha;
-    }
     const shadowY = style === 'drag' ? Math.max(2, size * 0.14) : Math.max(1, size * 0.09);
-    const shadowA = style === 'drag' ? 0.4 : 0.24;
+    const shadowA = style === 'drag' ? 0.35 : 0.22;
     if (style !== 'flat') {
       ctx.globalAlpha = alpha * shadowA;
       ctx.beginPath();
       ctx.roundRect(x, y + shadowY, size, size, r);
-      ctx.fillStyle = '#000';
+      ctx.fillStyle = '#0f172a';
+      ctx.fill();
+      ctx.globalAlpha = alpha;
+    }
+    if (style === 'raised') {
+      ctx.globalAlpha = alpha * 0.35;
+      ctx.beginPath();
+      ctx.roundRect(x - 1.5, y - 1.5, size + 3, size + 3, r + 1.5);
+      ctx.fillStyle = color;
       ctx.fill();
       ctx.globalAlpha = alpha;
     }
     ctx.beginPath();
     ctx.roundRect(x, y, size, size, r);
     const grad = ctx.createLinearGradient(x, y, x, y + size);
-    grad.addColorStop(0, lighten(color, 0.3));
-    grad.addColorStop(1, color);
+    grad.addColorStop(0, lighten(color, 0.45));
+    grad.addColorStop(0.45, color);
+    grad.addColorStop(1, shade(color, 0.22));
     ctx.fillStyle = grad;
     ctx.fill();
-    ctx.fillStyle = 'rgba(255,255,255,0.3)';
+    const side = ctx.createLinearGradient(x, y, x + size * 0.35, y);
+    side.addColorStop(0, 'rgba(255,255,255,0.35)');
+    side.addColorStop(1, 'rgba(255,255,255,0)');
     ctx.beginPath();
-    ctx.roundRect(x + size * 0.15, y + size * 0.12, size * 0.7, Math.max(2, size * 0.09), 2);
+    ctx.roundRect(x + 1, y + 1, size * 0.35, size - 2, r);
+    ctx.fillStyle = side;
     ctx.fill();
-    ctx.fillStyle = 'rgba(0,0,0,0.16)';
+    ctx.fillStyle = 'rgba(255,255,255,0.4)';
     ctx.beginPath();
-    ctx.roundRect(x + size * 0.08, y + size * 0.66, size * 0.84, size * 0.26, 2);
+    ctx.roundRect(x + size * 0.15, y + size * 0.1, size * 0.7, Math.max(2, size * 0.1), 2);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(0,0,0,0.18)';
+    ctx.beginPath();
+    ctx.roundRect(x + size * 0.06, y + size * 0.72, size * 0.88, size * 0.26, 2);
     ctx.fill();
     ctx.restore();
   }
