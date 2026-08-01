@@ -1,0 +1,8 @@
+{
+  "name": "block-blast-clone",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test js/"
+  }
+}

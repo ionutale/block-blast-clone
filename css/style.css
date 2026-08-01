@@ -1,0 +1,53 @@
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+  font-family: system-ui, -apple-system, sans-serif;
+  background: linear-gradient(160deg, #12263f, #0b1830);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.hud { text-align: center; margin-bottom: 10px; }
+.score-label { color: rgba(255,255,255,0.55); font-size: 12px; letter-spacing: 3px; }
+.score-value { color: #fff; font-size: 34px; font-weight: 700; line-height: 1.1; }
+#board {
+  width: min(94vw, 480px);
+  aspect-ratio: 5 / 7;
+  touch-action: none;
+  border-radius: 16px;
+}
+.overlay {
+  position: fixed; inset: 0; z-index: 10;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(5, 10, 20, 0.72);
+}
+.overlay.hidden { display: none; }
+.overlay-card {
+  background: #16293f;
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 16px;
+  padding: 28px 44px;
+  text-align: center;
+  color: #fff;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+}
+.overlay-card h1 { font-size: 26px; letter-spacing: 4px; color: #ffd23f; }
+.final-score { font-size: 42px; font-weight: 700; margin: 10px 0 20px; }
+#play-again {
+  background: #ff5b6a;
+  border: none;
+  color: #fff;
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: 1px;
+  padding: 12px 30px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+#play-again:active { transform: scale(0.97); }
