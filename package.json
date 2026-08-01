@@ -1,0 +1,12 @@
+{
+  "name": "block-blast-clone",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test 'js/*.test.js'",
+    "test:e2e": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.62.1"
+  }
+}

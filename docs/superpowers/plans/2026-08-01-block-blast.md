@@ -937,7 +937,7 @@ git commit -m "feat: add unified pointer input (mouse + touch)"
 - [ ] **Step 1: Implement `js/game.js`**
 
 ```js
-import { createRenderer } from './renderer.js';
+import { createRenderer, CLEAR_MS } from './renderer.js';
 import { setupInput } from './input.js';
 import {
   SIZE, createBoard, canPlace, placePiece, getFullLines, clearLines, anyPlacementPossible,
@@ -945,8 +945,6 @@ import {
 import { createTray, markUsed, allUsed, unusedPieces } from './tray.js';
 import { scorePlacement } from './scoring.js';
 import { countCells } from './shapes.js';
-
-const CLEAR_MS = 260;
 
 function clamp(v, lo, hi) {
   return Math.max(lo, Math.min(hi, v));
@@ -1172,3 +1170,343 @@ git commit -m "feat: wire up game bootstrap and play-again flow"
 - `state` passed to `renderer.render`: `{ board, tray, score, drag, clearing, gameOver }` — `game.js` builds exactly this in `frame()`.
 - `drag = { pieceIndex, x, y }` — `input.js` → `game.js` → `renderer.js` all agree.
 - `clearing = { board, lines, cells, start }` — set in `finishPlacement`, consumed in `drawClearing` and `frame`.
+
+---
+
+### Task 10: Playwright E2E test suite
+
+**Spec:** `docs/superpowers/specs/2026-08-01-e2e-tests-design.md`
+
+**Files:**
+- Modify: `js/game.js` (debug bridge), `js/renderer.js` (getLayout), `js/main.js` (?test=1 bridge), `package.json` (devDep + script), `.gitignore`
+- Create: `playwright.config.js`, `e2e/helpers.js`, `e2e/core.spec.js`, `e2e/lineclear.spec.js`, `e2e/gameover.spec.js`, `e2e/tray.spec.js`
+
+- [ ] **Step 1: Install Playwright**
+
+Run: `npm install -D @playwright/test && npx playwright install chromium`
+Expected: package.json gains `@playwright/test` in devDependencies; browsers install completes.
+
+- [ ] **Step 2: Add test API to `js/renderer.js`**
+
+In `createRenderer`, change the return statement to expose the layout:
+
+```js
+  return { render, getCellAt, hitTestTray, getLayout: () => ({ ...layout }) };
+```
+
+- [ ] **Step 3: Add debug bridge to `js/game.js`**
+
+Change the signature to `export function createGame(canvas, { onScore, onGameOver, debug } = {}) {`
+
+Add these functions after `restart()`:
+
+```js
+  function getState() {
+    return {
+      board: board.map((r) => [...r]),
+      tray: { pieces: tray.pieces.map((p) => ({ id: p.id, shape: p.shape, color: p.color, used: p.used })) },
+      score,
+      gameOver,
+      layout: renderer.getLayout(),
+    };
+  }
+
+  function setTray(pieces) {
+    tray = {
+      pieces: pieces.map((p, i) => ({
+        id: `test-${i}`,
+        shape: p.shape,
+        color: p.color || '#ff5b6a',
+        used: false,
+      })),
+    };
+  }
+
+  function setBoard(matrix) {
+    board = matrix.map((r) => [...r]);
+  }
+```
+
+Change the return to:
+
+```js
+  const api = { start, restart };
+  if (debug) {
+    api.debug = { getState, setTray, setBoard };
+  }
+  return api;
+```
+
+- [ ] **Step 4: Add the bridge to `js/main.js`**
+
+Replace the whole file content with:
+
+```js
+import { createGame } from './game.js';
+
+const canvas = document.getElementById('board');
+const scoreEl = document.getElementById('score');
+const overlay = document.getElementById('game-over');
+const finalScoreEl = document.getElementById('final-score');
+
+const testMode = new URLSearchParams(window.location.search).has('test');
+
+const game = createGame(canvas, {
+  onScore: (s) => {
+    scoreEl.textContent = String(s);
+  },
+  onGameOver: (s) => {
+    finalScoreEl.textContent = String(s);
+    overlay.classList.remove('hidden');
+  },
+  debug: testMode,
+});
+
+if (testMode && game.debug) window.__blockBlast = game.debug;
+
+document.getElementById('play-again').addEventListener('click', () => {
+  overlay.classList.add('hidden');
+  game.restart();
+});
+
+game.start();
+```
+
+- [ ] **Step 5: Update `package.json` scripts and `.gitignore`**
+
+Add to scripts: `"test:e2e": "playwright test"`.
+
+Add to `.gitignore`:
+
+```
+node_modules/
+test-results/
+playwright-report/
+```
+
+- [ ] **Step 6: Create `playwright.config.js`**
+
+```js
+import { defineConfig, devices } from '@playwright/test';
+
+export default defineConfig({
+  testDir: './e2e',
+  fullyParallel: true,
+  reporter: 'list',
+  use: {
+    baseURL: 'http://127.0.0.1:4173',
+  },
+  projects: [
+    { name: 'desktop-chromium', use: { ...devices['Desktop Chrome'] } },
+    { name: 'mobile-chrome', use: { ...devices['Pixel 5'] } },
+  ],
+  webServer: {
+    command: 'python3 -m http.server 4173 --bind 127.0.0.1',
+    url: 'http://127.0.0.1:4173',
+    reuseExistingServer: true,
+  },
+});
+```
+
+- [ ] **Step 7: Create `e2e/helpers.js`**
+
+```js
+import { expect } from '@playwright/test';
+
+export async function openGame(page) {
+  await page.goto('/?test=1');
+  await expect(page.locator('#score')).toHaveText('0');
+}
+
+export async function state(page) {
+  return page.evaluate(() => window.__blockBlast.getState());
+}
+
+export async function setTray(page, pieces) {
+  await page.evaluate((ps) => window.__blockBlast.setTray(ps), pieces);
+}
+
+export async function setBoard(page, board) {
+  await page.evaluate((b) => window.__blockBlast.setBoard(b), board);
+}
+
+export async function pointForCell(page, { row, col }) {
+  return page.evaluate(({ row, col }) => {
+    const canvas = document.getElementById('board');
+    const rect = canvas.getBoundingClientRect();
+    const { cell, boardX, boardY } = window.__blockBlast.getState().layout;
+    return {
+      x: rect.left + boardX + (col + 0.5) * cell,
+      y: rect.top + boardY + (row + 0.5) * cell,
+    };
+  }, { row, col });
+}
+
+export async function traySlotPoint(page, index) {
+  return page.evaluate((index) => {
+    const canvas = document.getElementById('board');
+    const rect = canvas.getBoundingClientRect();
+    const { cell, boardX, trayY } = window.__blockBlast.getState().layout;
+    const slot = Math.floor(cell * 2.4);
+    const gap = Math.floor(cell * 0.4);
+    const total = slot * 3 + gap * 2;
+    const x0 = boardX + Math.floor((cell * 8 - total) / 2);
+    return {
+      x: rect.left + x0 + index * (slot + gap) + slot / 2,
+      y: rect.top + trayY + slot / 2,
+    };
+  }, index);
+}
+
+export async function dragPiece(page, slotIndex, target) {
+  const from = await traySlotPoint(page, slotIndex);
+  await page.mouse.move(from.x, from.y);
+  await page.mouse.down();
+  await page.mouse.move(target.x, target.y, { steps: 12 });
+  await page.mouse.up();
+}
+```
+
+- [ ] **Step 8: Create `e2e/core.spec.js`**
+
+```js
+import { test, expect } from '@playwright/test';
+import { openGame, state, setTray, pointForCell, dragPiece } from './helpers.js';
+
+test('page loads with an empty board, score 0 and hidden overlay', async ({ page }) => {
+  await openGame(page);
+  await expect(page.locator('#game-over')).toBeHidden();
+  const s = await state(page);
+  expect(s.board.every((r) => r.every((c) => c === null))).toBe(true);
+  expect(s.gameOver).toBe(false);
+  expect(s.tray.pieces).toHaveLength(3);
+  expect(s.tray.pieces.every((p) => !p.used)).toBe(true);
+});
+
+test('valid placement increases score and fills cells', async ({ page }) => {
+  await openGame(page);
+  const before = await state(page);
+  await dragPiece(page, 0, await pointForCell(page, { row: 0, col: 0 }));
+  const after = await state(page);
+  expect(after.score).toBeGreaterThan(before.score);
+  expect(after.board.flat().filter((c) => c !== null).length).toBeGreaterThan(0);
+});
+
+test('drop outside the board returns the piece', async ({ page }) => {
+  await openGame(page);
+  const before = await state(page);
+  const box = await page.locator('#board').boundingBox();
+  await dragPiece(page, 0, { x: box.x + box.width / 2, y: box.y + box.height + 100 });
+  const after = await state(page);
+  expect(after.score).toBe(before.score);
+  expect(after.tray.pieces[0].used).toBe(false);
+});
+
+test('drop on occupied cells returns the piece', async ({ page }) => {
+  await openGame(page);
+  await setTray(page, [
+    { shape: [[1], [1]] },
+    { shape: [[1], [1]] },
+    { shape: [[1]] },
+  ]);
+  const target = await pointForCell(page, { row: 0, col: 0 });
+  await dragPiece(page, 0, target);
+  const mid = await state(page);
+  await dragPiece(page, 1, target);
+  const after = await state(page);
+  expect(after.score).toBe(mid.score);
+  expect(after.tray.pieces[1].used).toBe(false);
+});
+```
+
+- [ ] **Step 9: Create `e2e/lineclear.spec.js`**
+
+```js
+import { test, expect } from '@playwright/test';
+import { openGame, state, setTray, pointForCell, dragPiece } from './helpers.js';
+
+test('completing a row clears it and awards the line bonus', async ({ page }) => {
+  await openGame(page);
+  await setTray(page, [
+    { shape: [[1, 1, 1]] },
+    { shape: [[1, 1, 1]] },
+    { shape: [[1, 1, 1]] },
+  ]);
+  await dragPiece(page, 0, await pointForCell(page, { row: 0, col: 0 }));
+  await dragPiece(page, 1, await pointForCell(page, { row: 0, col: 3 }));
+  await dragPiece(page, 2, await pointForCell(page, { row: 0, col: 5 }));
+  await expect
+    .poll(async () => (await state(page)).board[0].every((c) => c === null))
+    .toBe(true);
+  const s = await state(page);
+  expect(s.score).toBe(19); // 9 cells + 10 line bonus
+});
+```
+
+- [ ] **Step 10: Create `e2e/gameover.spec.js`**
+
+```js
+import { test, expect } from '@playwright/test';
+import { openGame, state, setBoard, setTray, pointForCell, dragPiece } from './helpers.js';
+
+test('game over overlay appears when no piece fits and play again resets', async ({ page }) => {
+  await openGame(page);
+  const board = Array.from({ length: 8 }, (_, r) =>
+    Array.from({ length: 8 }, (_, c) => (r === 0 ? null : '#888888'))
+  );
+  await setBoard(page, board);
+  await setTray(page, [
+    { shape: [[1, 1, 1, 1, 1]] },
+    { shape: [[1, 1, 1, 1, 1]] },
+    { shape: [[1, 1, 1, 1, 1]] },
+  ]);
+  await dragPiece(page, 0, await pointForCell(page, { row: 0, col: 0 }));
+  await expect(page.locator('#game-over')).toBeVisible();
+  await expect(page.locator('#final-score')).toHaveText('5');
+  await page.getByRole('button', { name: 'PLAY AGAIN' }).click();
+  await expect(page.locator('#game-over')).toBeHidden();
+  await expect(page.locator('#score')).toHaveText('0');
+  const s = await state(page);
+  expect(s.board.every((r) => r.every((c) => c === null))).toBe(true);
+  expect(s.gameOver).toBe(false);
+});
+```
+
+- [ ] **Step 11: Create `e2e/tray.spec.js`**
+
+```js
+import { test, expect } from '@playwright/test';
+import { openGame, state, setTray, pointForCell, dragPiece } from './helpers.js';
+
+test('a new set of pieces is dealt after all three are used', async ({ page }) => {
+  await openGame(page);
+  await setTray(page, [
+    { shape: [[1]] },
+    { shape: [[1]] },
+    { shape: [[1]] },
+  ]);
+  await dragPiece(page, 0, await pointForCell(page, { row: 0, col: 0 }));
+  await dragPiece(page, 1, await pointForCell(page, { row: 0, col: 1 }));
+  await dragPiece(page, 2, await pointForCell(page, { row: 0, col: 2 }));
+  const s = await state(page);
+  expect(s.tray.pieces.every((p) => !p.used)).toBe(true);
+  expect(s.tray.pieces.map((p) => p.id).some((id) => id.startsWith('test-'))).toBe(false);
+});
+```
+
+- [ ] **Step 12: Run the full suite**
+
+Run: `npm run test:e2e`
+Expected: 8 tests pass across both projects (desktop + mobile). If a failure occurs, debug it and fix.
+
+- [ ] **Step 13: Run unit tests to confirm nothing broke**
+
+Run: `npm test`
+Expected: PASS — 11 tests green (3 shapes + 8 board).
+
+- [ ] **Step 14: Commit**
+
+```bash
+git add package.json package-lock.json playwright.config.js .gitignore js/game.js js/renderer.js js/main.js e2e/
+git commit -m "test: add Playwright E2E suite with ?test=1 debug bridge"
+```

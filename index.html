@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+  <title>Block Blast</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="hud">
+    <div class="score-label">SCORE</div>
+    <div class="score-value" id="score">0</div>
+  </div>
+  <button id="mute" class="mute-btn" type="button">🔊</button>
+  <canvas id="board"></canvas>
+  <div id="game-over" class="overlay hidden">
+    <div class="overlay-card">
+      <h1>GAME OVER</h1>
+      <div class="final-score" id="final-score">0</div>
+      <button id="play-again">PLAY AGAIN</button>
+    </div>
+  </div>
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
