@@ -30,9 +30,11 @@ test('getLevel finds levels and returns undefined for unknown', () => {
 });
 
 test('score goals are reachable given move budgets', () => {
+  // best theoretical move: 9 cells placed + 2 lines cleared
+  const maxPerMove = scorePlacement(9, 2);
   for (const l of LEVELS) {
     if (l.goal.type !== 'score') continue;
-    assert.ok(l.goal.target <= 20 * l.moves,
+    assert.ok(l.goal.target <= maxPerMove * l.moves,
       `level ${l.id}: ${l.goal.target} pts in ${l.moves} moves is unreachable`);
   }
 });
