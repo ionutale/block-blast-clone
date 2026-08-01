@@ -1,4 +1,4 @@
-export const COLORS = ['#ff5b6a', '#3ec1f0', '#ffd23f', '#4ade80', '#c084fc', '#fb923c'];
+export const COLORS = ['#ff2e63', '#00b8ff', '#ffc800', '#00e08c', '#a855f7', '#ff7a00'];
 
 export const SHAPES = [
   // single dot

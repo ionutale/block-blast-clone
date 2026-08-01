@@ -43,6 +43,18 @@ export function createRenderer(canvas) {
     });
   }
 
+  const ORB_COLORS = ['#fda4af', '#a5b4fc', '#fcd34d', '#6ee7b7', '#c4b5fd', '#7dd3fc'];
+  const orbs = [];
+  for (let i = 0; i < 6; i++) {
+    orbs.push({
+      x: Math.random(),
+      y: Math.random(),
+      r: 0.12 + Math.random() * 0.18,
+      speed: 0.1 + Math.random() * 0.2,
+      color: ORB_COLORS[i],
+    });
+  }
+
   function computeLayout(w, h) {
     const cell = Math.max(1, Math.min(
       Math.floor((h - PAD * 2 - 12) / (SIZE + 2.4)),
@@ -395,6 +407,28 @@ export function createRenderer(canvas) {
     }
   }
 
+  function drawBackground(now) {
+    const t = now / 1000;
+    const bg = ctx.createLinearGradient(0, 0, 0, layout.h);
+    bg.addColorStop(0, `hsl(${205 + 18 * Math.sin(t * 0.07)}, 85%, 76%)`);
+    bg.addColorStop(0.55, `hsl(${268 + 14 * Math.cos(t * 0.05)}, 80%, 82%)`);
+    bg.addColorStop(1, `hsl(${332 + 14 * Math.sin(t * 0.09)}, 85%, 88%)`);
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, layout.w, layout.h);
+    for (const o of orbs) {
+      const x = (o.x + 0.08 * Math.sin(t * o.speed * 0.6 + o.y * 10)) * layout.w;
+      const y = (o.y + 0.08 * Math.cos(t * o.speed * 0.5 + o.x * 10)) * layout.h;
+      const r = o.r * Math.min(layout.w, layout.h);
+      const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+      g.addColorStop(0, `${o.color}59`);
+      g.addColorStop(1, `${o.color}00`);
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(x, y, r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
   function render(state) {
     const { dpr, w, h } = layout;
     const now = performance.now();
@@ -402,11 +436,7 @@ export function createRenderer(canvas) {
     lastNow = now;
 
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    const bg = ctx.createLinearGradient(0, 0, 0, h);
-    bg.addColorStop(0, '#12263f');
-    bg.addColorStop(1, '#0b1830');
-    ctx.fillStyle = bg;
-    ctx.fillRect(0, 0, w, h);
+    drawBackground(now);
     drawTwinkles();
     drawBoardPanel();
     drawBoard(state.board);
