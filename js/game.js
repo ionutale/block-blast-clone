@@ -11,7 +11,7 @@ function clamp(v, lo, hi) {
   return Math.max(lo, Math.min(hi, v));
 }
 
-export function createGame(canvas, { onScore, onGameOver, onPlacement, debug } = {}) {
+export function createGame(canvas, { onScore, onGameOver, onPlacement, onInvalid, onNewTray, debug } = {}) {
   const renderer = createRenderer(canvas);
   let board = createBoard();
   let tray = createTray();
@@ -33,7 +33,10 @@ export function createGame(canvas, { onScore, onGameOver, onPlacement, debug } =
   }
 
   function maybeNewTray() {
-    if (allUsed(tray)) tray = createTray();
+    if (allUsed(tray)) {
+      tray = createTray();
+      if (onNewTray) onNewTray();
+    }
   }
 
   function remainingShapes() {
@@ -84,7 +87,10 @@ export function createGame(canvas, { onScore, onGameOver, onPlacement, debug } =
       if (!target) return;
       const row = clamp(target.row, 0, SIZE - piece.shape.length);
       const col = clamp(target.col, 0, SIZE - piece.shape[0].length);
-      if (!canPlace(board, piece.shape, row, col)) return;
+      if (!canPlace(board, piece.shape, row, col)) {
+        if (onInvalid) onInvalid();
+        return;
+      }
       const placed = placePiece(board, piece.shape, row, col, piece.color);
       const lines = getFullLines(placed);
       score += scorePlacement(countCells(piece.shape), lines.rows.length + lines.cols.length);
