@@ -41,6 +41,7 @@ export function createRenderer(canvas) {
   let shake = 0;
   let popups = [];
   let lastScore = 0;
+  let lastTrail = 0;
 
   const twinkles = [];
   for (let i = 0; i < TWINKLE_COUNT; i++) {
@@ -271,10 +272,14 @@ export function createRenderer(canvas) {
         const px = layout.boardX + bc * cell;
         const py = layout.boardY + br * cell;
         if (br >= 0 && br < SIZE && bc >= 0 && bc < SIZE) {
+          ctx.save();
+          ctx.shadowColor = tint;
+          ctx.shadowBlur = 14;
           ctx.beginPath();
           ctx.roundRect(px, py, cell, cell, 3);
           ctx.fillStyle = tint;
           ctx.fill();
+          ctx.restore();
           drawPieceCell(px, py, cell, piece.color, valid ? 0.75 : 0.85, 'drag');
         } else {
           drawPieceCell(px, py, cell, piece.color, 0.7, 'drag');
@@ -365,7 +370,8 @@ export function createRenderer(canvas) {
     }
   }
 
-  function updateEffects(board, now) {
+  function updateEffects(state, now) {
+    const board = state.board;
     if (lastBoard) {
       for (let r = 0; r < SIZE; r++) {
         for (let c = 0; c < SIZE; c++) {
@@ -390,6 +396,15 @@ export function createRenderer(canvas) {
       }
     }
     lastBoard = board;
+    if (state.drag && now - lastTrail > 45) {
+      lastTrail = now;
+      spawnParticles(
+        state.drag.x + (Math.random() - 0.5) * 24,
+        state.drag.y + (Math.random() - 0.5) * 24,
+        null,
+        1
+      );
+    }
   }
 
   function updateClearing(state) {
@@ -527,7 +542,7 @@ export function createRenderer(canvas) {
     }
 
     drawPopups();
-    updateEffects(state.board, now);
+    updateEffects(state, now);
     updateClearing(state);
     stepParticles(dt);
     shake = Math.max(0, shake * (1 - 8 * dt));
