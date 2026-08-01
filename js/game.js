@@ -11,7 +11,7 @@ function clamp(v, lo, hi) {
   return Math.max(lo, Math.min(hi, v));
 }
 
-export function createGame(canvas, { onScore, onGameOver, debug } = {}) {
+export function createGame(canvas, { onScore, onGameOver, onPlacement, debug } = {}) {
   const renderer = createRenderer(canvas);
   let board = createBoard();
   let tray = createTray();
@@ -89,6 +89,7 @@ export function createGame(canvas, { onScore, onGameOver, debug } = {}) {
       const lines = getFullLines(placed);
       score += scorePlacement(countCells(piece.shape), lines.rows.length + lines.cols.length);
       if (onScore) onScore(score);
+      if (onPlacement) onPlacement(lines.rows.length + lines.cols.length);
       board = placed;
       finishPlacement(piece.id, lines);
     },
