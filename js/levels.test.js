@@ -30,8 +30,8 @@ test('getLevel finds levels and returns undefined for unknown', () => {
 });
 
 test('score goals are reachable given move budgets', () => {
-  // best theoretical move: 9 cells placed + 2 lines cleared; near-optimal
-  // sustained play reaches ~60% of that, so targets must stay under it
+  // one strong move (9 cells + 2 lines) discounted by measured near-optimal
+  // efficiency (~60%) gives the practical pts/move ceiling; targets must stay under it
   const practicalMaxPerMove = Math.floor(scorePlacement(9, 2) * 0.6);
   for (const l of LEVELS) {
     if (l.goal.type !== 'score') continue;
