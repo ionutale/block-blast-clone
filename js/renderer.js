@@ -1,10 +1,16 @@
 import { SIZE } from './board.js';
 import { canPlace } from './board.js';
+import { COLORS } from './shapes.js';
 
 const PAD = 14;
 const GREEN = 'rgba(110, 231, 183, 0.4)';
 const RED = 'rgba(248, 113, 113, 0.45)';
 export const CLEAR_MS = 260;
+
+const POP_DURATION = 140;
+const PARTICLE_GRAVITY = 700;
+const MAX_PARTICLES = 500;
+const TWINKLE_COUNT = 14;
 
 function clamp(v, lo, hi) {
   return Math.max(lo, Math.min(hi, v));
@@ -19,6 +25,23 @@ function lighten(hex, f) {
 export function createRenderer(canvas) {
   const ctx = canvas.getContext('2d');
   let layout = { dpr: 1, w: 0, h: 0, cell: 0, boardX: 0, boardY: 0, trayY: 0 };
+
+  let particles = [];
+  let pops = [];
+  let lastBoard = null;
+  let lastClearing = false;
+  let lastNow = performance.now();
+
+  const twinkles = [];
+  for (let i = 0; i < TWINKLE_COUNT; i++) {
+    twinkles.push({
+      x: Math.random(),
+      y: Math.random(),
+      phase: Math.random() * Math.PI * 2,
+      speed: 0.5 + Math.random() * 1.2,
+      size: 1 + Math.random() * 1.6,
+    });
+  }
 
   function computeLayout(w, h) {
     const cell = Math.max(1, Math.min(
@@ -77,34 +100,73 @@ export function createRenderer(canvas) {
     return i;
   }
 
-  function drawPieceCell(x, y, size, color, alpha = 1) {
+  function drawPieceCell(x, y, size, color, alpha = 1, style = 'flat') {
     ctx.save();
     ctx.globalAlpha = alpha;
     const r = Math.max(3, size * 0.18);
+    if (style === 'raised') {
+      ctx.globalAlpha = alpha * 0.22;
+      ctx.beginPath();
+      ctx.roundRect(x - size * 0.04, y - size * 0.04, size * 1.08, size * 1.08, r + 1);
+      ctx.fillStyle = color;
+      ctx.fill();
+      ctx.globalAlpha = alpha;
+    }
+    const shadowY = style === 'drag' ? Math.max(2, size * 0.14) : Math.max(1, size * 0.09);
+    const shadowA = style === 'drag' ? 0.4 : 0.24;
+    if (style !== 'flat') {
+      ctx.globalAlpha = alpha * shadowA;
+      ctx.beginPath();
+      ctx.roundRect(x, y + shadowY, size, size, r);
+      ctx.fillStyle = '#000';
+      ctx.fill();
+      ctx.globalAlpha = alpha;
+    }
     ctx.beginPath();
     ctx.roundRect(x, y, size, size, r);
     const grad = ctx.createLinearGradient(x, y, x, y + size);
-    grad.addColorStop(0, lighten(color, 0.28));
+    grad.addColorStop(0, lighten(color, 0.3));
     grad.addColorStop(1, color);
     ctx.fillStyle = grad;
     ctx.fill();
-    ctx.fillStyle = 'rgba(255,255,255,0.28)';
-    ctx.fillRect(x + size * 0.16, y + size * 0.14, size * 0.68, Math.max(2, size * 0.1));
+    ctx.fillStyle = 'rgba(255,255,255,0.3)';
+    ctx.beginPath();
+    ctx.roundRect(x + size * 0.15, y + size * 0.12, size * 0.7, Math.max(2, size * 0.09), 2);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(0,0,0,0.16)';
+    ctx.beginPath();
+    ctx.roundRect(x + size * 0.08, y + size * 0.66, size * 0.84, size * 0.26, 2);
+    ctx.fill();
     ctx.restore();
   }
 
   function drawEmptyCell(px, py) {
+    const size = layout.cell;
     ctx.beginPath();
-    ctx.roundRect(px, py, layout.cell, layout.cell, 3);
-    ctx.fillStyle = 'rgba(255,255,255,0.07)';
+    ctx.roundRect(px, py, size, size, 3);
+    ctx.fillStyle = 'rgba(255,255,255,0.06)';
+    ctx.fill();
+    const inset = ctx.createLinearGradient(0, py + size * 0.5, 0, py + size);
+    inset.addColorStop(0, 'rgba(0,0,0,0)');
+    inset.addColorStop(1, 'rgba(0,0,0,0.3)');
+    ctx.beginPath();
+    ctx.roundRect(px + 1, py + size * 0.5, size - 2, size * 0.48, 2);
+    ctx.fillStyle = inset;
     ctx.fill();
   }
 
   function drawBoardPanel() {
     const p = 4;
+    const bx = layout.boardX - p;
+    const by = layout.boardY - p;
+    const bs = layout.cell * SIZE + p * 2;
     ctx.beginPath();
-    ctx.roundRect(layout.boardX - p, layout.boardY - p, layout.cell * SIZE + p * 2, layout.cell * SIZE + p * 2, 14);
-    ctx.fillStyle = 'rgba(255,255,255,0.09)';
+    ctx.roundRect(bx, by + 6, bs, bs, 14);
+    ctx.fillStyle = 'rgba(0,0,0,0.35)';
+    ctx.fill();
+    ctx.beginPath();
+    ctx.roundRect(bx, by, bs, bs, 14);
+    ctx.fillStyle = 'rgba(255,255,255,0.1)';
     ctx.fill();
   }
 
@@ -117,7 +179,7 @@ export function createRenderer(canvas) {
         if (color === null) {
           drawEmptyCell(px, py);
         } else {
-          drawPieceCell(px, py, layout.cell, color);
+          drawPieceCell(px, py, layout.cell, color, 1, 'raised');
         }
       }
     }
@@ -154,7 +216,7 @@ export function createRenderer(canvas) {
       for (let r = 0; r < rows; r++) {
         for (let c = 0; c < cols; c++) {
           if (!piece.shape[r][c]) continue;
-          drawPieceCell(layout.boardX + px + c * cell, layout.boardY + py + r * cell, cell, piece.color, 0.8);
+          drawPieceCell(layout.boardX + px + c * cell, layout.boardY + py + r * cell, cell, piece.color, 0.85, 'drag');
         }
       }
       return;
@@ -175,9 +237,9 @@ export function createRenderer(canvas) {
           ctx.roundRect(px, py, cell, cell, 3);
           ctx.fillStyle = tint;
           ctx.fill();
-          drawPieceCell(px, py, cell, piece.color, valid ? 0.75 : 0.85);
+          drawPieceCell(px, py, cell, piece.color, valid ? 0.75 : 0.85, 'drag');
         } else {
-          drawPieceCell(px, py, cell, piece.color, 0.7);
+          drawPieceCell(px, py, cell, piece.color, 0.7, 'drag');
         }
       }
     }
@@ -206,23 +268,162 @@ export function createRenderer(canvas) {
     }
   }
 
+  function cellCenter(row, col) {
+    return {
+      x: layout.boardX + col * layout.cell + layout.cell / 2,
+      y: layout.boardY + row * layout.cell + layout.cell / 2,
+    };
+  }
+
+  function spawnParticles(x, y, color, count) {
+    for (let i = 0; i < count; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const speed = 80 + Math.random() * 320;
+      const life = 0.5 + Math.random() * 0.4;
+      particles.push({
+        x,
+        y,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed - 60,
+        color: color || COLORS[Math.floor(Math.random() * COLORS.length)],
+        size: 2 + Math.random() * 3,
+        life,
+        maxLife: life,
+        rot: Math.random() * Math.PI,
+        vrot: (Math.random() - 0.5) * 10,
+      });
+    }
+  }
+
+  function spawnPop(x, y) {
+    pops.push({ x, y, start: performance.now(), duration: POP_DURATION });
+  }
+
+  function updateEffects(board, now) {
+    if (lastBoard) {
+      for (let r = 0; r < SIZE; r++) {
+        for (let c = 0; c < SIZE; c++) {
+          if (lastBoard[r][c] === null && board[r][c] !== null) {
+            const { x, y } = cellCenter(r, c);
+            spawnPop(x, y);
+            spawnParticles(x, y, board[r][c], 3);
+          }
+        }
+      }
+      let filledBefore = 0;
+      for (const row of lastBoard) {
+        for (const cell of row) if (cell !== null) filledBefore++;
+      }
+      let filledNow = 0;
+      for (const row of board) {
+        for (const cell of row) if (cell !== null) filledNow++;
+      }
+      if (filledBefore > 0 && filledNow === 0) {
+        particles = [];
+        pops = [];
+      }
+    }
+    lastBoard = board;
+  }
+
+  function updateClearing(state) {
+    if (state.clearing && !lastClearing) {
+      for (const { row, col } of state.clearing.cells) {
+        const { x, y } = cellCenter(row, col);
+        spawnParticles(x, y, null, 4);
+      }
+    }
+    lastClearing = Boolean(state.clearing);
+  }
+
+  function stepParticles(dt) {
+    for (let i = particles.length - 1; i >= 0; i--) {
+      const p = particles[i];
+      p.life -= dt;
+      if (p.life <= 0) {
+        particles.splice(i, 1);
+        continue;
+      }
+      p.vy += PARTICLE_GRAVITY * dt;
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      p.rot += p.vrot * dt;
+    }
+    for (let i = pops.length - 1; i >= 0; i--) {
+      if (performance.now() - pops[i].start > pops[i].duration) pops.splice(i, 1);
+    }
+  }
+
+  function drawTwinkles() {
+    for (const t of twinkles) {
+      const pulse = 0.5 + 0.5 * Math.sin(t.phase + performance.now() / 1000 * t.speed);
+      ctx.save();
+      ctx.globalAlpha = 0.08 + 0.14 * pulse;
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(t.x * layout.w, t.y * layout.h, t.size, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  function drawPops() {
+    for (const pop of pops) {
+      const t = (performance.now() - pop.start) / pop.duration;
+      const scale = 1 + 0.22 * (1 - t);
+      const size = layout.cell * scale;
+      ctx.save();
+      ctx.globalAlpha = (1 - t * 0.6) * 0.85;
+      ctx.beginPath();
+      ctx.roundRect(pop.x - size / 2, pop.y - size / 2, size, size, Math.max(3, size * 0.18));
+      ctx.fillStyle = '#ffffff';
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  function drawParticles() {
+    for (const p of particles) {
+      const alpha = clamp(p.life / p.maxLife, 0, 1);
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.rot);
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = p.color;
+      ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.7);
+      ctx.restore();
+    }
+  }
+
   function render(state) {
     const { dpr, w, h } = layout;
+    const now = performance.now();
+    const dt = Math.min(0.05, (now - lastNow) / 1000);
+    lastNow = now;
+
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     const bg = ctx.createLinearGradient(0, 0, 0, h);
     bg.addColorStop(0, '#12263f');
     bg.addColorStop(1, '#0b1830');
     ctx.fillStyle = bg;
     ctx.fillRect(0, 0, w, h);
+    drawTwinkles();
     drawBoardPanel();
     drawBoard(state.board);
+    drawPops();
     drawClearing(state.clearing);
     if (state.drag) drawDrag(state.drag, state.board, state.tray);
     drawTray(state.tray, state.drag);
+    drawParticles();
     if (state.gameOver) {
       ctx.fillStyle = 'rgba(5,10,20,0.55)';
       ctx.fillRect(0, 0, w, h);
     }
+
+    updateEffects(state.board, now);
+    updateClearing(state);
+    stepParticles(dt);
+    if (particles.length > MAX_PARTICLES) particles.splice(0, particles.length - MAX_PARTICLES);
   }
 
   return { render, getCellAt, hitTestTray, getLayout: () => ({ ...layout }) };

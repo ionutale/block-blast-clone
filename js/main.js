@@ -10,6 +10,9 @@ const testMode = new URLSearchParams(window.location.search).get('test') === '1'
 const game = createGame(canvas, {
   onScore: (s) => {
     scoreEl.textContent = String(s);
+    scoreEl.classList.remove('pop');
+    void scoreEl.offsetWidth;
+    scoreEl.classList.add('pop');
   },
   onGameOver: (s) => {
     finalScoreEl.textContent = String(s);
