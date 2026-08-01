@@ -329,8 +329,8 @@ export function createRenderer(canvas) {
     }
   }
 
-  function spawnPop(x, y) {
-    pops.push({ x, y, start: performance.now(), duration: POP_DURATION });
+  function spawnPop(x, y, color) {
+    pops.push({ x, y, color: color || '#ffffff', start: performance.now(), duration: POP_DURATION });
   }
 
   function updateEffects(board, now) {
@@ -339,7 +339,7 @@ export function createRenderer(canvas) {
         for (let c = 0; c < SIZE; c++) {
           if (lastBoard[r][c] === null && board[r][c] !== null) {
             const { x, y } = cellCenter(r, c);
-            spawnPop(x, y);
+            spawnPop(x, y, board[r][c]);
             spawnParticles(x, y, board[r][c], 3);
           }
         }
@@ -404,13 +404,20 @@ export function createRenderer(canvas) {
   function drawPops() {
     for (const pop of pops) {
       const t = (performance.now() - pop.start) / pop.duration;
-      const scale = 1 + 0.22 * (1 - t);
-      const size = layout.cell * scale;
+      const sx = 1 + 0.3 * (1 - t);
+      const sy = 1 + 0.42 * (1 - t);
+      const size = layout.cell;
       ctx.save();
-      ctx.globalAlpha = (1 - t * 0.6) * 0.85;
+      ctx.globalAlpha = (1 - t * 0.75) * 0.9;
+      ctx.translate(pop.x, pop.y);
+      ctx.scale(sx, sy);
       ctx.beginPath();
-      ctx.roundRect(pop.x - size / 2, pop.y - size / 2, size, size, Math.max(3, size * 0.18));
-      ctx.fillStyle = '#ffffff';
+      ctx.roundRect(-size / 2, -size / 2, size, size, Math.max(3, size * 0.18));
+      ctx.fillStyle = pop.color;
+      ctx.fill();
+      ctx.globalAlpha = (1 - t * 0.75) * 0.32;
+      ctx.beginPath();
+      ctx.roundRect(-size * 0.65, -size * 0.65, size * 1.3, size * 1.3, Math.max(3, size * 0.22));
       ctx.fill();
       ctx.restore();
     }
