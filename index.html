@@ -7,21 +7,92 @@
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-  <div class="hud">
-    <div class="score-label">SCORE</div>
-    <div class="score-value" id="score">0</div>
-    <div class="online hidden" id="online"></div>
-  </div>
-  <button id="mute" class="mute-btn" type="button">🔊</button>
-  <canvas id="board"></canvas>
-  <footer class="copyright">© June 2026 · Created by Abi &amp; Ion</footer>
-  <div id="game-over" class="overlay hidden">
-    <div class="overlay-card">
-      <h1>GAME OVER</h1>
-      <div class="final-score" id="final-score">0</div>
-      <button id="play-again">PLAY AGAIN</button>
+  <section id="screen-menu" class="screen active">
+    <div class="menu-card">
+      <h1 class="menu-title">BLOCK BLAST</h1>
+      <p class="menu-subtitle">CANDY EDITION</p>
+      <div class="menu-buttons">
+        <button id="btn-play" class="menu-btn menu-btn--primary" type="button">PLAY</button>
+        <button id="btn-levels" class="menu-btn" type="button">LEVELS</button>
+        <button id="btn-settings" class="menu-btn" type="button">SETTINGS</button>
+        <button id="btn-leaderboard" class="menu-btn" type="button">LEADERBOARD</button>
+      </div>
+      <p class="menu-footer">© June 2026 · Created by Abi &amp; Ion</p>
     </div>
-  </div>
+  </section>
+
+  <section id="screen-levels" class="screen">
+    <div class="screen-header">
+      <button class="back-btn" data-back type="button">‹</button>
+      <h2>LEVELS</h2>
+    </div>
+    <div id="level-grid" class="level-grid"></div>
+  </section>
+
+  <section id="screen-settings" class="screen">
+    <div class="screen-header">
+      <button class="back-btn" data-back type="button">‹</button>
+      <h2>SETTINGS</h2>
+    </div>
+    <div class="settings-card">
+      <label class="setting-row">
+        <span>Player name</span>
+        <input id="setting-name" type="text" maxlength="12" placeholder="Your name">
+      </label>
+      <label class="setting-row">
+        <span>Music volume</span>
+        <input id="setting-music" type="range" min="0" max="100" step="5" value="70">
+      </label>
+      <label class="setting-row">
+        <span>SFX volume</span>
+        <input id="setting-sfx" type="range" min="0" max="100" step="5" value="100">
+      </label>
+      <label class="setting-row">
+        <span>Haptics</span>
+        <input id="setting-haptics" type="checkbox">
+      </label>
+      <button id="setting-reset" class="setting-reset" type="button">Reset progress</button>
+    </div>
+  </section>
+
+  <section id="screen-leaderboard" class="screen">
+    <div class="screen-header">
+      <button class="back-btn" data-back type="button">‹</button>
+      <h2>LEADERBOARD</h2>
+    </div>
+    <div class="leaderboard-tabs">
+      <button class="lb-tab" data-mode="endless" type="button">ENDLESS</button>
+      <button class="lb-tab" data-mode="challenge" type="button">CHALLENGE</button>
+    </div>
+    <div id="lb-status" class="lb-status"></div>
+    <ol id="lb-list" class="lb-list"></ol>
+  </section>
+
+  <section id="screen-game" class="screen">
+    <div class="hud">
+      <div class="score-label">SCORE</div>
+      <div class="score-value" id="score">0</div>
+      <div class="online hidden" id="online"></div>
+      <div id="challenge-hud" class="challenge-hud hidden">
+        <span id="moves-left" class="challenge-stat">MOVES: 0</span>
+        <span id="goal-text" class="challenge-stat"></span>
+      </div>
+    </div>
+    <button id="mute" class="mute-btn" type="button">🔊</button>
+    <canvas id="board"></canvas>
+    <div id="game-over" class="overlay hidden">
+      <div class="overlay-card">
+        <h1>GAME OVER</h1>
+        <div class="final-score" id="final-score">0</div>
+        <div id="leaderboard-entry" class="leaderboard-entry">
+          <input id="lb-name" class="lb-name-input" type="text" maxlength="12" placeholder="Your name">
+          <button id="lb-submit" class="lb-submit-btn" type="button">SUBMIT SCORE</button>
+          <div id="lb-result" class="lb-result"></div>
+        </div>
+        <button id="play-again" type="button">PLAY AGAIN</button>
+      </div>
+    </div>
+  </section>
   <script type="module" src="js/main.js"></script>
 </body>
 </html>
