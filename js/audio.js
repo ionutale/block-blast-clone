@@ -1,20 +1,16 @@
 export const MUTE_KEY = 'block-blast-muted';
 
-// Chords: Am, F, C, G as midi note numbers (bass + ascending arpeggio tones).
-export const CHORDS = [
-  [33, 60, 64, 69],
-  [41, 57, 60, 65],
-  [48, 55, 60, 64],
-  [43, 59, 62, 67],
+export const SFX_MANIFEST = [
+  { name: 'place', file: 'assets/sfx/place.wav' },
+  { name: 'clear', file: 'assets/sfx/clear.wav' },
+  { name: 'combo', file: 'assets/sfx/combo.wav' },
+  { name: 'invalid', file: 'assets/sfx/invalid.wav' },
+  { name: 'newtray', file: 'assets/sfx/newtray.wav' },
+  { name: 'boardfull', file: 'assets/sfx/boardfull.wav' },
+  { name: 'gameover', file: 'assets/sfx/gameover.wav' },
 ];
 
-const NOTES_PER_CHORD = 4;
-const NOTE_DURATION = 0.33;
-const LOOKAHEAD = 0.6;
-
-export function midiToFreq(midi) {
-  return 440 * Math.pow(2, (midi - 69) / 12);
-}
+export const MUSIC_URL = 'assets/audio/music.mp3';
 
 export function createAudio() {
   let ctx = null;
@@ -22,9 +18,10 @@ export function createAudio() {
   let sfxGain = null;
   let musicGain = null;
   let muted = false;
-  let musicTimer = null;
-  let nextNoteTime = 0;
-  let noteIndex = 0;
+  let loaded = false;
+  const buffers = new Map();
+  let musicBuffer = null;
+  let musicSource = null;
 
   try {
     muted = window.localStorage.getItem(MUTE_KEY) === '1';
@@ -54,54 +51,57 @@ export function createAudio() {
     }
   }
 
-  function tone(freqStart, freqEnd, dur, type, vol, delay = 0) {
+  async function loadAudio(url) {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const arr = await res.arrayBuffer();
+    return ctx.decodeAudioData(arr);
+  }
+
+  async function loadAll() {
+    if (loaded) return;
+    loaded = true;
+    try {
+      await Promise.all(
+        SFX_MANIFEST.map(async (s) => {
+          try {
+            buffers.set(s.name, await loadAudio(s.file));
+          } catch (e) {
+            console.warn(`audio: failed to load ${s.file}`, e);
+          }
+        })
+      );
+      try {
+        musicBuffer = await loadAudio(MUSIC_URL);
+      } catch (e) {
+        console.warn(`audio: no music track at ${MUSIC_URL}`, e);
+      }
+    } catch (e) {
+      console.warn('audio: load error', e);
+    }
+    startMusic();
+  }
+
+  function play(name, { delay = 0, volume = 1 } = {}) {
     if (!ctx) return;
-    const t0 = ctx.currentTime + delay;
-    const osc = ctx.createOscillator();
+    const buf = buffers.get(name);
+    if (!buf) return;
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
     const gain = ctx.createGain();
-    osc.type = type;
-    osc.frequency.setValueAtTime(freqStart, t0);
-    if (freqEnd > 0) {
-      osc.frequency.exponentialRampToValueAtTime(Math.max(1, freqEnd), t0 + dur);
-    }
-    gain.gain.setValueAtTime(0, t0);
-    gain.gain.linearRampToValueAtTime(vol, t0 + 0.015);
-    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-    osc.connect(gain);
+    gain.gain.value = volume;
+    src.connect(gain);
     gain.connect(sfxGain);
-    osc.start(t0);
-    osc.stop(t0 + dur + 0.05);
-  }
-
-  function scheduleNote(time, midi) {
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.type = 'triangle';
-    osc.frequency.value = midiToFreq(midi);
-    gain.gain.setValueAtTime(0, time);
-    gain.gain.linearRampToValueAtTime(0.11, time + 0.03);
-    gain.gain.exponentialRampToValueAtTime(0.0001, time + 0.5);
-    osc.connect(gain);
-    gain.connect(musicGain);
-    osc.start(time);
-    osc.stop(time + 0.55);
-  }
-
-  function tickMusic() {
-    if (!ctx || muted) return;
-    while (nextNoteTime < ctx.currentTime + LOOKAHEAD) {
-      const chord = CHORDS[Math.floor(noteIndex / NOTES_PER_CHORD) % CHORDS.length];
-      scheduleNote(nextNoteTime, chord[noteIndex % NOTES_PER_CHORD]);
-      nextNoteTime += NOTE_DURATION;
-      noteIndex++;
-    }
+    src.start(ctx.currentTime + delay);
   }
 
   function startMusic() {
-    if (!ctx || musicTimer) return;
-    nextNoteTime = ctx.currentTime + 0.15;
-    tickMusic();
-    musicTimer = setInterval(tickMusic, 120);
+    if (!ctx || !musicBuffer || musicSource) return;
+    musicSource = ctx.createBufferSource();
+    musicSource.buffer = musicBuffer;
+    musicSource.loop = true;
+    musicSource.connect(musicGain);
+    musicSource.start();
   }
 
   function unlock() {
@@ -109,27 +109,33 @@ export function createAudio() {
     if (ctx.state === 'suspended') {
       ctx.resume().catch(() => {});
     }
-    startMusic();
+    loadAll();
   }
 
   function place() {
-    if (!ensure()) return;
-    tone(440, 220, 0.12, 'sine', 0.28);
+    play('place');
   }
 
   function clear(lines) {
-    if (!ensure()) return;
-    const scale = [523.25, 659.25, 783.99, 1046.5, 783.99, 1318.5];
-    const steps = lines >= 3 ? 6 : lines * 2;
-    for (let i = 0; i < steps; i++) {
-      tone(scale[i % scale.length], scale[i % scale.length], 0.18, 'triangle', 0.24, i * 0.07);
-    }
+    play('clear');
+    if (lines >= 2) play('combo', { delay: 0.05 });
+  }
+
+  function invalid() {
+    play('invalid');
+  }
+
+  function newTray() {
+    play('newtray');
+  }
+
+  function boardFull() {
+    play('boardfull');
   }
 
   function gameOver() {
-    if (!ensure()) return;
-    const notes = [392, 329.63, 261.63, 196];
-    notes.forEach((f, i) => tone(f, f * 0.97, 0.35, 'triangle', 0.3, i * 0.28));
+    boardFull();
+    play('gameover', { delay: 0.3 });
   }
 
   function setMuted(m) {
@@ -147,5 +153,9 @@ export function createAudio() {
     return muted;
   }
 
-  return { unlock, place, clear, gameOver, toggle, isMuted: () => muted };
+  return {
+    unlock, place, clear, gameOver, invalid, newTray, combo: clear, boardFull,
+    toggle,
+    isMuted: () => muted,
+  };
 }
