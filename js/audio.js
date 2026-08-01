@@ -61,23 +61,19 @@ export function createAudio() {
   async function loadAll() {
     if (loaded) return;
     loaded = true;
+    await Promise.all(
+      SFX_MANIFEST.map(async (s) => {
+        try {
+          buffers.set(s.name, await loadAudio(s.file));
+        } catch (e) {
+          console.warn(`audio: failed to load ${s.file}`, e);
+        }
+      })
+    );
     try {
-      await Promise.all(
-        SFX_MANIFEST.map(async (s) => {
-          try {
-            buffers.set(s.name, await loadAudio(s.file));
-          } catch (e) {
-            console.warn(`audio: failed to load ${s.file}`, e);
-          }
-        })
-      );
-      try {
-        musicBuffer = await loadAudio(MUSIC_URL);
-      } catch (e) {
-        console.warn(`audio: no music track at ${MUSIC_URL}`, e);
-      }
+      musicBuffer = await loadAudio(MUSIC_URL);
     } catch (e) {
-      console.warn('audio: load error', e);
+      console.warn(`audio: no music track at ${MUSIC_URL}`, e);
     }
     startMusic();
   }
@@ -154,7 +150,7 @@ export function createAudio() {
   }
 
   return {
-    unlock, place, clear, gameOver, invalid, newTray, combo: clear, boardFull,
+    unlock, place, clear, gameOver, invalid, newTray, combo: () => play('combo'), boardFull,
     toggle,
     isMuted: () => muted,
   };
