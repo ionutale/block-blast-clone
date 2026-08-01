@@ -19,8 +19,8 @@ function tune(overrides) {
 const PRESETS = {
   place: tune({
     wave_type: 2,
-    p_env_attack: 0.01, p_env_sustain: 0.06, p_env_punch: 0.3, p_env_decay: 0.12,
-    p_base_freq: 0.4, p_freq_limit: 0.35, p_freq_ramp: -0.35,
+    p_env_attack: 0.01, p_env_sustain: 0.1, p_env_punch: 0.3, p_env_decay: 0.2,
+    p_base_freq: 0.4, p_freq_ramp: -0.35,
   }),
   clear: tune({
     wave_type: 2,
@@ -49,11 +49,10 @@ const PRESETS = {
   }),
   gameover: tune({
     wave_type: 1,
-    p_env_attack: 0.01, p_env_sustain: 0.1, p_env_punch: 0.3, p_env_decay: 0.8,
+    p_env_attack: 0.01, p_env_sustain: 0.1, p_env_punch: 0.3, p_env_decay: 0.6,
     p_base_freq: 0.35, p_freq_ramp: -0.6,
   }),
 };
-
 let failed = false;
 for (const [name, params] of Object.entries(PRESETS)) {
   const wav = new SoundEffect(params).generate().dataURI;
