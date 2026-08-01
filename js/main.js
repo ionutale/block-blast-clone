@@ -1,5 +1,6 @@
 import { createGame } from './game.js';
 import { createAudio } from './audio.js';
+import { initOnline } from './online.js';
 
 const canvas = document.getElementById('board');
 const scoreEl = document.getElementById('score');
@@ -30,6 +31,10 @@ const game = createGame(canvas, {
 });
 
 if (testMode && game.debug) window.__blockBlast = game.debug;
+
+if (!testMode) {
+  initOnline(document.getElementById('online'));
+}
 
 const muteBtn = document.getElementById('mute');
 const updateMute = () => {

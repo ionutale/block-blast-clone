@@ -38,6 +38,17 @@ body {
   cursor: pointer;
 }
 .mute-btn:active { transform: scale(0.95); }
+.online {
+  margin-top: 3px;
+  color: rgba(255,255,255,0.55);
+  font-size: 13px;
+  letter-spacing: 1px;
+}
+.online::before {
+  content: '● ';
+  color: #4ade80;
+}
+.online.hidden { visibility: hidden; }
 #board {
   width: min(94vw, 480px);
   aspect-ratio: 5 / 7;
