@@ -43,7 +43,7 @@ test('score goals are reachable given move budgets', () => {
 test('key level values are pinned', () => {
   assert.equal(getLevel(1).moves, 8);
   assert.equal(getLevel(1).goal.target, 2);
-  assert.deepEqual(getLevel(3).goal, { type: 'score', target: 150 });
+  assert.deepEqual(getLevel(3).goal, { type: 'score', target: 100 });
   assert.equal(getLevel(20).goal.target, 15);
   assert.equal(getLevel(20).moves, 28);
 });

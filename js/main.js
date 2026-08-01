@@ -49,9 +49,9 @@ const game = createGame(canvas, {
   onMovesLeft: (n) => {
     movesLeftEl.textContent = `MOVES: ${n}`;
   },
-  onLevelComplete: ({ stars, score, movesLeft }) => {
-    recordLevelResult(routeLevelId, stars);
-    showLevelComplete({ stars, score, movesLeft });
+  onLevelComplete: ({ stars, score, newlyUnlocked }) => {
+    const result = recordLevelResult(routeLevelId, stars);
+    showLevelComplete({ stars, score, newlyUnlocked: result.newlyUnlocked });
   },
   onLevelFailed: () => {
     showLevelFailed();
@@ -94,7 +94,7 @@ function startEndless() {
 
 function startChallenge(levelId) {
   const level = getLevel(levelId);
-  if (!level) {
+  if (!level || loadProgress().unlocked < levelId) {
     window.location.hash = '#/levels';
     return;
   }
@@ -110,7 +110,7 @@ function startChallenge(levelId) {
   game.start();
 }
 
-function showLevelComplete({ stars, score, movesLeft }) {
+function showLevelComplete({ stars, score, newlyUnlocked }) {
   pendingScore = score;
   lbNameEl.value = loadPlayerName();
   lbResultEl.textContent = '';
@@ -118,9 +118,7 @@ function showLevelComplete({ stars, score, movesLeft }) {
   const starText = '★'.repeat(stars) + '☆'.repeat(3 - stars);
   finalScoreEl.textContent = `${starText}  ${score}`;
   overlay.querySelector('h1').textContent = 'LEVEL COMPLETE';
-  const next = getLevel(routeLevelId + 1);
-  const nextLabel = next && loadProgress().unlocked >= next.id ? 'NEXT LEVEL' : 'RETRY';
-  overlay.querySelector('#play-again').textContent = nextLabel;
+  overlay.querySelector('#play-again').textContent = newlyUnlocked ? 'NEXT LEVEL' : 'RETRY';
   overlay.classList.remove('hidden');
 }
 
