@@ -398,9 +398,10 @@ export function createRenderer(canvas) {
     lastBoard = board;
     if (state.drag && now - lastTrail > 45) {
       lastTrail = now;
+      const rect = canvas.getBoundingClientRect();
       spawnParticles(
-        state.drag.x + (Math.random() - 0.5) * 24,
-        state.drag.y + (Math.random() - 0.5) * 24,
+        state.drag.x - rect.left + (Math.random() - 0.5) * 24,
+        state.drag.y - rect.top + (Math.random() - 0.5) * 24,
         null,
         1
       );
