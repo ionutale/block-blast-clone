@@ -50,8 +50,8 @@ const game = createGame(canvas, {
     movesLeftEl.textContent = `MOVES: ${n}`;
   },
   onLevelComplete: ({ stars, score, movesLeft }) => {
-    const result = recordLevelResult(routeLevelId, stars);
-    showLevelComplete({ stars, score, movesLeft, newlyUnlocked: result.newlyUnlocked });
+    recordLevelResult(routeLevelId, stars);
+    showLevelComplete({ stars, score, movesLeft });
   },
   onLevelFailed: () => {
     showLevelFailed();
@@ -61,6 +61,7 @@ const game = createGame(canvas, {
     finalScoreEl.textContent = String(s);
     lbNameEl.value = loadPlayerName();
     lbResultEl.textContent = '';
+    document.getElementById('leaderboard-entry').classList.remove('hidden');
     overlay.classList.remove('hidden');
     if (audio) audio.gameOver();
   },
@@ -109,19 +110,24 @@ function startChallenge(levelId) {
   game.start();
 }
 
-function showLevelComplete({ stars, score, movesLeft, newlyUnlocked }) {
+function showLevelComplete({ stars, score, movesLeft }) {
   pendingScore = score;
   lbNameEl.value = loadPlayerName();
   lbResultEl.textContent = '';
+  document.getElementById('leaderboard-entry').classList.remove('hidden');
   const starText = '★'.repeat(stars) + '☆'.repeat(3 - stars);
   finalScoreEl.textContent = `${starText}  ${score}`;
   overlay.querySelector('h1').textContent = 'LEVEL COMPLETE';
-  overlay.querySelector('#play-again').textContent = newlyUnlocked ? 'NEXT LEVEL' : 'RETRY';
+  const next = getLevel(routeLevelId + 1);
+  const nextLabel = next && loadProgress().unlocked >= next.id ? 'NEXT LEVEL' : 'RETRY';
+  overlay.querySelector('#play-again').textContent = nextLabel;
   overlay.classList.remove('hidden');
 }
 
 function showLevelFailed() {
   pendingScore = null;
+  document.getElementById('leaderboard-entry').classList.add('hidden');
+  lbResultEl.textContent = '';
   overlay.querySelector('h1').textContent = 'LEVEL FAILED';
   finalScoreEl.textContent = '0';
   overlay.querySelector('#play-again').textContent = 'RETRY';
@@ -283,7 +289,6 @@ function bindLeaderboard() {
     }
   }
   for (const t of tabs) t.addEventListener('click', () => load(t.dataset.mode));
-  load('endless');
   return { refresh: () => load(activeMode) };
 }
 

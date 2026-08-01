@@ -1,7 +1,7 @@
 import { expect } from '@playwright/test';
 
 export async function openGame(page) {
-  await page.goto('/?test=1');
+  await page.goto('/?test=1#/play');
   await expect(page.locator('#score')).toHaveText('0');
 }
 
