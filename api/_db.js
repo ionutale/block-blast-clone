@@ -58,7 +58,7 @@ export async function submitLeaderboardScore({ name, score, mode }) {
     { upsert: true }
   );
   const all = await col.find({ mode }).sort({ score: -1 }).toArray();
-  const idx = all.findIndex((e) => e.name === name && e.score === score);
+  const idx = all.findIndex((e) => e.name === name);
   const rank = idx === -1 ? all.length : idx + 1;
   return { rank, entries: all.slice(0, 10).map((e) => ({ name: e.name, score: e.score })) };
 }
