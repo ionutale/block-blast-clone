@@ -4,6 +4,7 @@ import { canPlace } from './board.js';
 const PAD = 14;
 const GREEN = 'rgba(110, 231, 183, 0.4)';
 const RED = 'rgba(248, 113, 113, 0.45)';
+export const CLEAR_MS = 260;
 
 function clamp(v, lo, hi) {
   return Math.max(lo, Math.min(hi, v));
@@ -20,10 +21,10 @@ export function createRenderer(canvas) {
   let layout = { dpr: 1, w: 0, h: 0, cell: 0, boardX: 0, boardY: 0, trayY: 0 };
 
   function computeLayout(w, h) {
-    const cell = Math.min(
+    const cell = Math.max(1, Math.min(
       Math.floor((h - PAD * 2 - 12) / (SIZE + 2.4)),
       Math.floor((w - PAD * 2) / SIZE)
-    );
+    ));
     const slot = Math.floor(cell * 2.4);
     const boardPx = cell * SIZE;
     const totalH = boardPx + 12 + slot;
@@ -55,14 +56,19 @@ export function createRenderer(canvas) {
     return { row, col };
   }
 
+  function trayMetrics(cell) {
+    const slot = Math.floor(cell * 2.4);
+    const gap = Math.floor(cell * 0.4);
+    const total = slot * 3 + gap * 2;
+    const x0 = layout.boardX + Math.floor((layout.cell * SIZE - total) / 2);
+    return { slot, gap, total, x0 };
+  }
+
   function hitTestTray(clientX, clientY) {
     const rect = canvas.getBoundingClientRect();
     const x = clientX - rect.left;
     const y = clientY - rect.top;
-    const slot = Math.floor(layout.cell * 2.4);
-    const gap = Math.floor(layout.cell * 0.4);
-    const total = slot * 3 + gap * 2;
-    const x0 = layout.boardX + Math.floor((layout.cell * SIZE - total) / 2);
+    const { slot, gap, total, x0 } = trayMetrics(layout.cell);
     if (y < layout.trayY || y > layout.trayY + slot) return -1;
     const rel = x - x0;
     if (rel < 0 || rel > total) return -1;
@@ -119,7 +125,7 @@ export function createRenderer(canvas) {
 
   function drawClearing(clearing) {
     if (!clearing) return;
-    const t = clamp((performance.now() - clearing.start) / 260, 0, 1);
+    const t = clamp((performance.now() - clearing.start) / CLEAR_MS, 0, 1);
     const alpha = 1 - t;
     ctx.save();
     ctx.globalAlpha = alpha;
@@ -140,10 +146,11 @@ export function createRenderer(canvas) {
     const target = getCellAt(drag.x, drag.y);
     const { cell } = layout;
     if (!target) {
+      const rect = canvas.getBoundingClientRect();
       const cols = piece.shape[0].length;
       const rows = piece.shape.length;
-      const px = drag.x - layout.boardX - (cols * cell) / 2;
-      const py = drag.y - layout.boardY - (rows * cell) / 2;
+      const px = drag.x - rect.left - layout.boardX - (cols * cell) / 2;
+      const py = drag.y - rect.top - layout.boardY - (rows * cell) / 2;
       for (let r = 0; r < rows; r++) {
         for (let c = 0; c < cols; c++) {
           if (!piece.shape[r][c]) continue;
@@ -176,11 +183,8 @@ export function createRenderer(canvas) {
     }
   }
 
-  function drawTray(tray) {
-    const slot = Math.floor(layout.cell * 2.4);
-    const gap = Math.floor(layout.cell * 0.4);
-    const total = slot * 3 + gap * 2;
-    const x0 = layout.boardX + Math.floor((layout.cell * SIZE - total) / 2);
+  function drawTray(tray, drag) {
+    const { slot, gap, total, x0 } = trayMetrics(layout.cell);
     for (let i = 0; i < tray.pieces.length; i++) {
       const p = tray.pieces[i];
       const sx = x0 + i * (slot + gap);
@@ -188,7 +192,7 @@ export function createRenderer(canvas) {
       ctx.roundRect(sx, layout.trayY, slot, slot, 12);
       ctx.fillStyle = p.used ? 'rgba(255,255,255,0.04)' : 'rgba(255,255,255,0.09)';
       ctx.fill();
-      if (p.used) continue;
+      if (p.used || (drag && i === drag.pieceIndex)) continue;
       const cols = p.shape[0].length;
       const rows = p.shape.length;
       const pc = Math.floor(Math.min((slot * 0.8) / cols, (slot * 0.8) / rows));
@@ -214,7 +218,7 @@ export function createRenderer(canvas) {
     drawBoard(state.board);
     drawClearing(state.clearing);
     if (state.drag) drawDrag(state.drag, state.board, state.tray);
-    drawTray(state.tray);
+    drawTray(state.tray, state.drag);
     if (state.gameOver) {
       ctx.fillStyle = 'rgba(5,10,20,0.55)';
       ctx.fillRect(0, 0, w, h);
