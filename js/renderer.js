@@ -538,7 +538,7 @@ export function createRenderer(canvas) {
     drawTray(state.tray, state.drag);
     drawParticles();
     if (state.gameOver) {
-      ctx.fillStyle = 'rgba(5,10,20,0.55)';
+      ctx.fillStyle = 'rgba(45,55,95,0.35)';
       ctx.fillRect(0, 0, w, h);
     }
 
