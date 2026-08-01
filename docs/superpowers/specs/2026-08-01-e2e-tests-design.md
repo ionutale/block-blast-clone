@@ -36,10 +36,11 @@ Suită completă de teste end-to-end cu Playwright pentru jocul Block Blast: în
 4. Drop peste celule ocupate: `setTray` cu piese cunoscute (2 verticale identice), prima plasată la (0,0), a doua la (0,0) → invalidă → scor neschimbat, piesa nefolosită.
 
 **lineclear.spec.js**
-- `setTray` cu 3 linii orizontale ×3; plasări reale la (0,0), (0,3), (0,5) → rândul 0 se șterge (poll până când `getState().board[0]` e gol — animația de ștergere durează 260ms), scor = 9 celule + 10 bonus = 19.
+- `setTray` cu linii orizontale de lățimi 3+3+2; plasări reale la (0,0), (0,3), (0,6) → rândul 0 se șterge exact (8 celule; 3+3+2=8 — trei piese ×3 ar depăși tabla: 9>8) — poll până când `getState().board[0]` e gol (animația durează 260ms), scor = 8 celule + 10 bonus = 18.
 
 **gameover.spec.js**
-- `setBoard`: rândurile 1–7 pline, rândul 0 gol. `setTray`: trei linii ×5 orizontale. Plasare reală la (0,0) → rândul 0 rămâne parțial (5/8), liniile ×5 rămase nu mai încap nicăieri → overlay GAME OVER vizibil, scor final 5. Click PLAY AGAIN → overlay ascuns, scor 0, board resetat, `gameOver: false`.
+- `setBoard`: rândurile 1–7 cu un pattern de găuri (nicio secvență orizontală de 5 libere, fiecare coloană 0–4 cu ≥1 gaură — astfel încât nicio linie să se completeze la plasare). `setTray`: trei linii ×5 orizontale. Plasare reală la (0,0) → 5 celule, zero linii completate; liniile ×5 rămase nu mai încap nicăieri → overlay GAME OVER vizibil, scor final 5. Click PLAY AGAIN → overlay ascuns, scor 0, board resetat, `gameOver: false`.
+  - Notă: varianta „rândurile 1–7 pline" din planul inițial e imposibilă — plasarea în rândul 0 ar completa 5 coloane și ar șterge linii, prevenind game over-ul.
 
 **tray.spec.js**
 - `setTray` cu trei pătrățele; plasări reale la (0,0), (0,1), (0,2) → după a treia, `getState().tray` are piese noi (id-uri diferite de `test-*`, toate `used: false`).
