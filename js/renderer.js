@@ -169,31 +169,39 @@ export function createRenderer(canvas) {
   function drawEmptyCell(px, py) {
     const size = layout.cell;
     ctx.beginPath();
-    ctx.roundRect(px, py, size, size, 3);
-    ctx.fillStyle = 'rgba(255,255,255,0.06)';
+    ctx.roundRect(px, py, size, size, Math.max(3, size * 0.14));
+    ctx.fillStyle = 'rgba(255,255,255,0.45)';
     ctx.fill();
-    const inset = ctx.createLinearGradient(0, py + size * 0.5, 0, py + size);
-    inset.addColorStop(0, 'rgba(0,0,0,0)');
-    inset.addColorStop(1, 'rgba(0,0,0,0.3)');
-    ctx.beginPath();
-    ctx.roundRect(px + 1, py + size * 0.5, size - 2, size * 0.48, 2);
-    ctx.fillStyle = inset;
-    ctx.fill();
+    ctx.fillStyle = 'rgba(120,140,180,0.18)';
+    const step = Math.max(3, Math.floor(size / 3));
+    for (let dx = step / 2; dx < size; dx += step) {
+      for (let dy = step / 2; dy < size; dy += step) {
+        ctx.beginPath();
+        ctx.arc(px + dx, py + dy, Math.max(1, size * 0.02), 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
   }
 
   function drawBoardPanel() {
-    const p = 4;
+    const p = 5;
     const bx = layout.boardX - p;
     const by = layout.boardY - p;
     const bs = layout.cell * SIZE + p * 2;
+    ctx.save();
+    ctx.shadowColor = 'rgba(30,64,120,0.28)';
+    ctx.shadowBlur = 22;
+    ctx.shadowOffsetY = 10;
     ctx.beginPath();
-    ctx.roundRect(bx, by + 6, bs, bs, 14);
-    ctx.fillStyle = 'rgba(0,0,0,0.35)';
+    ctx.roundRect(bx, by, bs, bs, 16);
+    ctx.fillStyle = 'rgba(255,255,255,0.5)';
     ctx.fill();
+    ctx.restore();
     ctx.beginPath();
-    ctx.roundRect(bx, by, bs, bs, 14);
-    ctx.fillStyle = 'rgba(255,255,255,0.1)';
-    ctx.fill();
+    ctx.roundRect(bx, by, bs, bs, 16);
+    ctx.strokeStyle = 'rgba(255,255,255,0.65)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
   }
 
   function drawBoard(board) {
@@ -278,7 +286,7 @@ export function createRenderer(canvas) {
       const sx = x0 + i * (slot + gap);
       ctx.beginPath();
       ctx.roundRect(sx, layout.trayY, slot, slot, 12);
-      ctx.fillStyle = p.used ? 'rgba(255,255,255,0.04)' : 'rgba(255,255,255,0.09)';
+      ctx.fillStyle = p.used ? 'rgba(30,58,110,0.05)' : 'rgba(30,58,110,0.08)';
       ctx.fill();
       if (p.used || (drag && i === drag.pieceIndex)) continue;
       const cols = p.shape[0].length;
