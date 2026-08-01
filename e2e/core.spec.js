@@ -45,3 +45,8 @@ test('drop on occupied cells returns the piece', async ({ page }) => {
   expect(after.score).toBe(mid.score);
   expect(after.tray.pieces[1].used).toBe(false);
 });
+
+test('no debug bridge without ?test=1', async ({ page }) => {
+  await page.goto('/');
+  expect(await page.evaluate(() => '__blockBlast' in window)).toBe(false);
+});

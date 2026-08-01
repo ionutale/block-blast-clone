@@ -5,7 +5,7 @@ const scoreEl = document.getElementById('score');
 const overlay = document.getElementById('game-over');
 const finalScoreEl = document.getElementById('final-score');
 
-const testMode = new URLSearchParams(window.location.search).has('test');
+const testMode = new URLSearchParams(window.location.search).get('test') === '1';
 
 const game = createGame(canvas, {
   onScore: (s) => {
