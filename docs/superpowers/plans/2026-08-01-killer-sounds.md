@@ -10,7 +10,7 @@
 
 **Spec:** `docs/superpowers/specs/2026-08-01-killer-sounds-design.md`
 
-**Verified API facts (jsfxr 1.4.1):** `import { Params, SoundEffect } from 'jsfxr'` — set Params fields (`wave_type` 0=SQUARE/1=SAWTOOTH/2=SINE/3=NOISE, `p_env_attack/sustain/punch/decay`, `p_base_freq`, `p_freq_ramp`, `p_freq_limit`, `sound_vol`, `sample_rate`, `sample_size`), then `new SoundEffect(ps).generate().dataURI` returns a base64 WAV data URI. Do NOT call `sfxr.toWave()` after `generate()` — it re-generates and throws "Bad wave type: NaN"; use `.dataURI` directly.
+**Verified API facts (jsfxr 1.4.1):** `import jsfxr from 'jsfxr'` then destructure `const { Params, SoundEffect } = jsfxr;` (the ESM wrapper only exports `jsfxr`/`sfxr`; `Params`/`SoundEffect` live on the default export) — set Params fields (`wave_type` 0=SQUARE/1=SAWTOOTH/2=SINE/3=NOISE, `p_env_attack/sustain/punch/decay`, `p_base_freq`, `p_freq_ramp`, `p_freq_limit`, `sound_vol`, `sample_rate`, `sample_size`), then `new SoundEffect(ps).generate().dataURI` returns a base64 WAV data URI. Do NOT call `sfxr.toWave()` after `generate()` — it re-generates and throws "Bad wave type: NaN"; use `.dataURI` directly.
 
 ---
 
@@ -34,7 +34,8 @@ Create `tools/gen-sfx.mjs`:
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { Params, SoundEffect } from 'jsfxr';
+import jsfxr from 'jsfxr';
+const { Params, SoundEffect } = jsfxr;
 
 const OUT = join(dirname(fileURLToPath(import.meta.url)), '..', 'assets', 'sfx');
 mkdirSync(OUT, { recursive: true });
@@ -51,8 +52,8 @@ function tune(overrides) {
 const PRESETS = {
   place: tune({
     wave_type: 2,
-    p_env_attack: 0.01, p_env_sustain: 0.06, p_env_punch: 0.3, p_env_decay: 0.12,
-    p_base_freq: 0.4, p_freq_limit: 0.45, p_freq_ramp: -0.35,
+    p_env_attack: 0.01, p_env_sustain: 0.1, p_env_punch: 0.3, p_env_decay: 0.2,
+    p_base_freq: 0.4, p_freq_ramp: -0.35,
   }),
   clear: tune({
     wave_type: 2,
@@ -81,7 +82,7 @@ const PRESETS = {
   }),
   gameover: tune({
     wave_type: 1,
-    p_env_attack: 0.01, p_env_sustain: 0.1, p_env_punch: 0.3, p_env_decay: 0.8,
+    p_env_attack: 0.01, p_env_sustain: 0.1, p_env_punch: 0.3, p_env_decay: 0.6,
     p_base_freq: 0.35, p_freq_ramp: -0.6,
   }),
 };
