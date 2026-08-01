@@ -937,7 +937,7 @@ git commit -m "feat: add unified pointer input (mouse + touch)"
 - [ ] **Step 1: Implement `js/game.js`**
 
 ```js
-import { createRenderer } from './renderer.js';
+import { createRenderer, CLEAR_MS } from './renderer.js';
 import { setupInput } from './input.js';
 import {
   SIZE, createBoard, canPlace, placePiece, getFullLines, clearLines, anyPlacementPossible,
@@ -945,8 +945,6 @@ import {
 import { createTray, markUsed, allUsed, unusedPieces } from './tray.js';
 import { scorePlacement } from './scoring.js';
 import { countCells } from './shapes.js';
-
-const CLEAR_MS = 260;
 
 function clamp(v, lo, hi) {
   return Math.max(lo, Math.min(hi, v));
