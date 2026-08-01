@@ -11,7 +11,7 @@ function clamp(v, lo, hi) {
   return Math.max(lo, Math.min(hi, v));
 }
 
-export function createGame(canvas, { onScore, onGameOver } = {}) {
+export function createGame(canvas, { onScore, onGameOver, debug } = {}) {
   const renderer = createRenderer(canvas);
   let board = createBoard();
   let tray = createTray();
@@ -118,5 +118,34 @@ export function createGame(canvas, { onScore, onGameOver } = {}) {
     if (onScore) onScore(0);
   }
 
-  return { start, restart };
+  function getState() {
+    return {
+      board: board.map((r) => [...r]),
+      tray: { pieces: tray.pieces.map((p) => ({ id: p.id, shape: p.shape, color: p.color, used: p.used })) },
+      score,
+      gameOver,
+      layout: renderer.getLayout(),
+    };
+  }
+
+  function setTray(pieces) {
+    tray = {
+      pieces: pieces.map((p, i) => ({
+        id: `test-${i}`,
+        shape: p.shape,
+        color: p.color || '#ff5b6a',
+        used: false,
+      })),
+    };
+  }
+
+  function setBoard(matrix) {
+    board = matrix.map((r) => [...r]);
+  }
+
+  const api = { start, restart };
+  if (debug) {
+    api.debug = { getState, setTray, setBoard };
+  }
+  return api;
 }

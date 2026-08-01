@@ -225,5 +225,5 @@ export function createRenderer(canvas) {
     }
   }
 
-  return { render, getCellAt, hitTestTray };
+  return { render, getCellAt, hitTestTray, getLayout: () => ({ ...layout }) };
 }
