@@ -1,0 +1,29 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { LEVELS, calcStars, getLevel } from './levels.js';
+
+test('LEVELS has 20 levels with sequential ids', () => {
+  assert.equal(LEVELS.length, 20);
+  LEVELS.forEach((l, i) => assert.equal(l.id, i + 1));
+});
+
+test('every level has a valid goal and move budget', () => {
+  for (const l of LEVELS) {
+    assert.ok(['lines', 'score'].includes(l.goal.type), `level ${l.id} goal type`);
+    assert.ok(Number.isInteger(l.goal.target) && l.goal.target > 0, `level ${l.id} target`);
+    assert.ok(Number.isInteger(l.moves) && l.moves >= 3, `level ${l.id} moves`);
+  }
+});
+
+test('star math: 1 star for completion, 2 with moves left, 3 at a third of budget', () => {
+  const level = { id: 1, goal: { type: 'lines', target: 2 }, moves: 9 };
+  assert.equal(calcStars(level, 0), 1);
+  assert.equal(calcStars(level, 1), 2);
+  assert.equal(calcStars(level, 3), 3);
+  assert.equal(calcStars(level, 9), 3);
+});
+
+test('getLevel finds levels and returns undefined for unknown', () => {
+  assert.equal(getLevel(5).moves, LEVELS[4].moves);
+  assert.equal(getLevel(99), undefined);
+});
