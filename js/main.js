@@ -32,12 +32,12 @@ const game = createGame(canvas, {
     scoreEl.classList.add('pop');
   },
   onPlacement: (lines) => {
-    if (audio) audio.place();
     if (lines > 0) {
       if (audio) audio.clear(lines);
       if (settings.haptics && navigator.vibrate) navigator.vibrate([10, 30, 10]);
-    } else if (settings.haptics && navigator.vibrate) {
-      navigator.vibrate(10);
+    } else {
+      if (audio) audio.place();
+      if (settings.haptics && navigator.vibrate) navigator.vibrate(10);
     }
   },
   onInvalid: () => {
@@ -57,6 +57,7 @@ const game = createGame(canvas, {
     showLevelFailed();
   },
   onGameOver: (s) => {
+    pendingScore = s;
     finalScoreEl.textContent = String(s);
     lbNameEl.value = loadPlayerName();
     lbResultEl.textContent = '';
@@ -82,15 +83,23 @@ function hideOverlay() {
 function startEndless() {
   routeLevelId = null;
   pendingMode = 'endless';
+  pendingScore = null;
   challengeHud.classList.add('hidden');
+  overlay.querySelector('h1').textContent = 'GAME OVER';
+  overlay.querySelector('#play-again').textContent = 'PLAY AGAIN';
   game.startEndless();
   game.start();
 }
 
 function startChallenge(levelId) {
+  const level = getLevel(levelId);
+  if (!level) {
+    window.location.hash = '#/levels';
+    return;
+  }
   routeLevelId = levelId;
   pendingMode = 'challenge';
-  const level = getLevel(levelId);
+  pendingScore = null;
   challengeHud.classList.remove('hidden');
   movesLeftEl.textContent = `MOVES: ${level.moves}`;
   goalTextEl.textContent = level.goal.type === 'lines'
@@ -112,6 +121,7 @@ function showLevelComplete({ stars, score, movesLeft, newlyUnlocked }) {
 }
 
 function showLevelFailed() {
+  pendingScore = null;
   overlay.querySelector('h1').textContent = 'LEVEL FAILED';
   finalScoreEl.textContent = '0';
   overlay.querySelector('#play-again').textContent = 'RETRY';
@@ -223,10 +233,15 @@ function bindSettings() {
   resetBtn.addEventListener('click', () => {
     if (window.confirm('Reset all progress?')) {
       clearAll();
+      settings.musicVolume = 0.7;
+      settings.sfxVolume = 1;
+      settings.haptics = false;
       nameInput.value = '';
       musicInput.value = 70;
       sfxInput.value = 100;
       hapticsInput.checked = false;
+      if (audio) audio.setMusicVolume(0.7);
+      if (audio) audio.setSfxVolume(1);
     }
   });
 }
@@ -234,7 +249,9 @@ function bindSettings() {
 function bindLeaderboard() {
   const tabs = document.querySelectorAll('.lb-tab');
   let activeMode = 'endless';
+  let loadId = 0;
   async function load(mode) {
+    const id = ++loadId;
     activeMode = mode;
     for (const t of tabs) t.classList.toggle('lb-tab--active', t.dataset.mode === mode);
     const status = document.getElementById('lb-status');
@@ -242,6 +259,7 @@ function bindLeaderboard() {
     status.textContent = 'Loading…';
     list.innerHTML = '';
     const res = await fetchLeaderboard(mode);
+    if (id !== loadId) return; // stale response
     if (res === null) {
       status.textContent = 'Offline — leaderboard unavailable';
       return;
@@ -253,22 +271,43 @@ function bindLeaderboard() {
     }
     for (const [i, e] of res.entries.entries()) {
       const li = document.createElement('li');
-      li.innerHTML = `<span class="lb-rank">${i + 1}</span><span>${e.name}</span><span>${e.score}</span>`;
+      const rank = document.createElement('span');
+      rank.className = 'lb-rank';
+      rank.textContent = String(i + 1);
+      const name = document.createElement('span');
+      name.textContent = e.name;
+      const score = document.createElement('span');
+      score.textContent = String(e.score);
+      li.append(rank, name, score);
       list.appendChild(li);
     }
   }
   for (const t of tabs) t.addEventListener('click', () => load(t.dataset.mode));
   load('endless');
+  return { refresh: () => load(activeMode) };
 }
 
+const leaderboardScreen = bindLeaderboard();
+
 initRouter({
-  menu: () => showScreen('screen-menu'),
+  menu: () => {
+    game.stop();
+    showScreen('screen-menu');
+  },
   levels: () => {
+    game.stop();
     showScreen('screen-levels');
     renderLevels();
   },
-  settings: () => showScreen('screen-settings'),
-  leaderboard: () => showScreen('screen-leaderboard'),
+  settings: () => {
+    game.stop();
+    showScreen('screen-settings');
+  },
+  leaderboard: () => {
+    game.stop();
+    showScreen('screen-leaderboard');
+    leaderboardScreen.refresh();
+  },
   play: () => {
     showScreen('screen-game');
     hideOverlay();
@@ -285,7 +324,6 @@ bindMenu();
 bindBackButtons();
 bindOverlay();
 bindSettings();
-bindLeaderboard();
 
 if (testMode && game.debug) window.__blockBlast = game.debug;
 
