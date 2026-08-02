@@ -30,6 +30,9 @@ test('submit posts to the API and shows the rank', async ({ page }) => {
     posted = route.request().postDataJSON();
     route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ rank: 3, entries: [] }) });
   });
+  await page.route('**/api/game-session', (route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ token: 'test-token' }) })
+  );
   await page.goto('/?test=1#/play');
   // Force a deterministic game over via the debug bridge: rows 1-7 have a max
   // empty run of 4 (no 5-wide piece fits), with holes in cols 0-4 so no line
@@ -54,5 +57,38 @@ test('submit posts to the API and shows the rank', async ({ page }) => {
   await page.fill('#lb-name', 'Abi');
   await page.click('#lb-submit');
   await expect(page.locator('#lb-result')).toContainText('Rank #3');
-  expect(posted).toEqual({ name: 'Abi', score: expect.any(Number), mode: 'endless' });
+  expect(posted).toEqual({ name: 'Abi', score: expect.any(Number), mode: 'endless', token: 'test-token' });
+});
+
+test('rejected submission shows a friendly message', async ({ page }) => {
+  await page.route('**/api/leaderboard', (route) =>
+    route.fulfill({ status: 401, contentType: 'application/json', body: JSON.stringify({ error: 'invalid or expired session' }) })
+  );
+  await page.route('**/api/game-session', (route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ token: 'test-token' }) })
+  );
+  await page.goto('/?test=1#/play');
+  // Force a deterministic game over via the debug bridge: rows 1-7 have a max
+  // empty run of 4 (no 5-wide piece fits), with holes in cols 0-4 so no line
+  // completes. After the single placement, the two remaining 5-wide pieces
+  // cannot fit anywhere -> game over fires.
+  const holes = [
+    [0, 3], [1, 3], [2, 3], [0, 4], [1, 4], [2, 4], [3],
+  ];
+  const board = Array.from({ length: 8 }, () => Array(8).fill('#888888'));
+  board[0] = Array(8).fill(null);
+  for (let r = 1; r <= 7; r++) {
+    for (const c of holes[r - 1]) board[r][c] = null;
+  }
+  await setBoard(page, board);
+  await setTray(page, [
+    { shape: [[1, 1, 1, 1, 1]] },
+    { shape: [[1, 1, 1, 1, 1]] },
+    { shape: [[1, 1, 1, 1, 1]] },
+  ]);
+  await dragPiece(page, 0, await pointForCell(page, { row: 0, col: 0 }));
+  await expect(page.locator('#game-over')).toBeVisible();
+  await page.fill('#lb-name', 'Abi');
+  await page.click('#lb-submit');
+  await expect(page.locator('#lb-result')).toHaveText('Score rejected — start a new game');
 });
