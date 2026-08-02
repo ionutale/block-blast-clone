@@ -69,3 +69,48 @@ export async function getLeaderboard(mode, limit = 10) {
   const entries = await col.find({ mode }).sort({ score: -1 }).limit(limit).toArray();
   return { entries: entries.map((e) => ({ name: e.name, score: e.score })) };
 }
+
+const SESSIONS_COLLECTION = 'game-sessions';
+const RATE_LIMIT_COLLECTION = 'rate-limit';
+
+let indexPromise = null;
+
+export function ensureIndexes() {
+  if (!indexPromise) {
+    indexPromise = (async () => {
+      const client = await getClient();
+      const db = client.db(DB_NAME);
+      await db.collection(SESSIONS_COLLECTION).createIndex({ exp: 1 }, { expireAfterSeconds: 0 });
+      await db.collection(RATE_LIMIT_COLLECTION).createIndex({ ts: 1 }, { expireAfterSeconds: 3600 });
+    })().catch((e) => {
+      indexPromise = null;
+      throw e;
+    });
+  }
+  return indexPromise;
+}
+
+export async function mintSession({ sid, exp }) {
+  const client = await getClient();
+  await client.db(DB_NAME).collection(SESSIONS_COLLECTION).insertOne({ _id: sid, exp, used: false });
+}
+
+export async function consumeSession(sid) {
+  const client = await getClient();
+  const doc = await client.db(DB_NAME).collection(SESSIONS_COLLECTION).findOneAndUpdate(
+    { _id: sid, used: false, exp: { $gt: Date.now() } },
+    { $set: { used: true } },
+    { returnDocument: 'after' }
+  );
+  return doc || null;
+}
+
+export async function dbRateLimit(scope, key, max, windowMs) {
+  const client = await getClient();
+  const col = client.db(DB_NAME).collection(RATE_LIMIT_COLLECTION);
+  const since = Date.now() - windowMs;
+  const count = await col.countDocuments({ scope, key, ts: { $gt: since } });
+  if (count >= max) return true;
+  await col.insertOne({ scope, key, ts: Date.now() });
+  return false;
+}
