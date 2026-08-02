@@ -7,7 +7,7 @@ import {
   loadSettings, saveSettings, loadPlayerName, savePlayerName,
   loadProgress, recordLevelResult, clearAll,
 } from './storage.js';
-import { fetchLeaderboard, submitScore } from './leaderboard.js';
+import { fetchLeaderboard, submitScore, requestSession } from './leaderboard.js';
 
 const testMode = new URLSearchParams(window.location.search).get('test') === '1';
 const audio = testMode ? null : createAudio();
@@ -70,6 +70,7 @@ const game = createGame(canvas, {
 
 let routeLevelId = null;
 let pendingScore = null;
+let pendingToken = null;
 let pendingMode = 'endless';
 
 function showScreen(id) {
@@ -85,6 +86,10 @@ function startEndless() {
   routeLevelId = null;
   pendingMode = 'endless';
   pendingScore = null;
+  pendingToken = null;
+  requestSession().then((t) => {
+    pendingToken = t;
+  });
   challengeHud.classList.add('hidden');
   overlay.querySelector('h1').textContent = 'GAME OVER';
   overlay.querySelector('#play-again').textContent = 'PLAY AGAIN';
@@ -101,6 +106,10 @@ function startChallenge(levelId) {
   routeLevelId = levelId;
   pendingMode = 'challenge';
   pendingScore = null;
+  pendingToken = null;
+  requestSession().then((t) => {
+    pendingToken = t;
+  });
   challengeHud.classList.remove('hidden');
   movesLeftEl.textContent = `MOVES: ${level.moves}`;
   goalTextEl.textContent = level.goal.type === 'lines'
@@ -140,9 +149,13 @@ function bindOverlay() {
       return;
     }
     savePlayerName(name);
-    const res = await submitScore({ name, score: pendingScore, mode: pendingMode });
+    const res = await submitScore({ name, score: pendingScore, mode: pendingMode, token: pendingToken });
     if (res === null) {
       lbResultEl.textContent = 'Offline — score not submitted';
+    } else if (res.error === 'rate-limited') {
+      lbResultEl.textContent = 'Rate limited — try again later';
+    } else if (res.error) {
+      lbResultEl.textContent = 'Score rejected — start a new game';
     } else {
       lbResultEl.textContent = `Rank #${res.rank}`;
     }
