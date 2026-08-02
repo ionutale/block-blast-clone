@@ -1,4 +1,6 @@
-import { dbConfigured, leaderboardModes, submitLeaderboardScore, getLeaderboard } from './_db.js';
+import { dbConfigured, leaderboardModes, submitLeaderboardScore, getLeaderboard, ensureIndexes, consumeSession, dbRateLimit } from './_db.js';
+import { verifyToken } from './_sessions.js';
+import { clientIp } from './_util.js';
 
 function parseScore(raw) {
   const n = Number(raw);
@@ -13,9 +15,17 @@ function parseName(raw) {
   return name;
 }
 
+const ENDLESS_MAX = 10000000;
+const CHALLENGE_MAX = 1000000;
+
 export default async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store');
   if (!dbConfigured()) {
+    res.status(503).json({ error: 'storage not configured' });
+    return;
+  }
+  const secret = process.env.SCORE_SECRET;
+  if (!secret) {
     res.status(503).json({ error: 'storage not configured' });
     return;
   }
@@ -36,6 +46,27 @@ export default async function handler(req, res) {
       const score = parseScore(req.body && req.body.score);
       if (!leaderboardModes().includes(mode) || name === null || score === null) {
         res.status(400).json({ error: 'invalid payload' });
+        return;
+      }
+      const cap = mode === 'endless' ? ENDLESS_MAX : CHALLENGE_MAX;
+      if (score > cap) {
+        res.status(400).json({ error: 'score out of range' });
+        return;
+      }
+      await ensureIndexes();
+      const session = verifyToken(secret, req.body && req.body.token);
+      if (!session) {
+        res.status(401).json({ error: 'invalid or expired session' });
+        return;
+      }
+      const consumed = await consumeSession(session.sid);
+      if (!consumed) {
+        res.status(401).json({ error: 'invalid or expired session' });
+        return;
+      }
+      const limited = await dbRateLimit('submit', clientIp(req), 10, 60 * 60 * 1000);
+      if (limited) {
+        res.status(429).json({ error: 'rate limited' });
         return;
       }
       const data = await submitLeaderboardScore({ name, score, mode });
