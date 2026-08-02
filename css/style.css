@@ -136,8 +136,13 @@ body {
 .screen-header { display: flex; align-items: center; gap: 10px; width: min(94vw, 480px); margin-bottom: 12px; }
 .screen-header h2 { color: #2b2b4f; font-size: 18px; letter-spacing: 3px; flex: 1; text-align: center; }
 .back-btn {
-  width: 40px; height: 40px; border-radius: 12px; font-size: 22px; line-height: 1;
+  padding: 8px 16px; border-radius: 12px; font-size: 12px; font-weight: 700; letter-spacing: 1px;
   background: rgba(255,255,255,0.55); border: 1px solid rgba(255,255,255,0.85); color: #2b2b4f; cursor: pointer;
+}
+.mute-btn--left {
+  left: 14px; right: auto;
+  width: auto; padding: 0 14px;
+  font-size: 12px; font-weight: 700; letter-spacing: 1px;
 }
 .level-grid {
   display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px;

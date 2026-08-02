@@ -176,7 +176,7 @@ function bindMenu() {
 }
 
 function bindBackButtons() {
-  for (const btn of document.querySelectorAll('[data-back]')) {
+  for (const btn of document.querySelectorAll('[data-back], #menu-btn')) {
     btn.addEventListener('click', () => {
       window.location.hash = '#/';
     });
