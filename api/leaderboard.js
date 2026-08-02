@@ -24,11 +24,6 @@ export default async function handler(req, res) {
     res.status(503).json({ error: 'storage not configured' });
     return;
   }
-  const secret = process.env.SCORE_SECRET;
-  if (!secret) {
-    res.status(503).json({ error: 'storage not configured' });
-    return;
-  }
   try {
     if (req.method === 'GET') {
       const mode = req.query.mode;
@@ -41,6 +36,11 @@ export default async function handler(req, res) {
       return;
     }
     if (req.method === 'POST') {
+      const secret = process.env.SCORE_SECRET;
+      if (!secret) {
+        res.status(503).json({ error: 'storage not configured' });
+        return;
+      }
       const mode = req.body && req.body.mode;
       const name = parseName(req.body && req.body.name);
       const score = parseScore(req.body && req.body.score);
