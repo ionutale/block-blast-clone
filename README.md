@@ -159,6 +159,8 @@ npx playwright test   # E2E (Playwright, desktop + mobile): 19 specs × 2 projec
 
 ## Deployment
 
+**Live version:** https://block-blast-clone-woad.vercel.app
+
 The project deploys to Vercel via the **native Git integration** — pushing to `master` auto-deploys. No GitHub Actions, no tokens:
 
 ```bash
