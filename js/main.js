@@ -149,15 +149,20 @@ function bindOverlay() {
       return;
     }
     savePlayerName(name);
-    const res = await submitScore({ name, score: pendingScore, mode: pendingMode, token: pendingToken });
-    if (res === null) {
-      lbResultEl.textContent = 'Offline — score not submitted';
-    } else if (res.error === 'rate-limited') {
-      lbResultEl.textContent = 'Rate limited — try again later';
-    } else if (res.error) {
-      lbResultEl.textContent = 'Score rejected — start a new game';
-    } else {
-      lbResultEl.textContent = `Rank #${res.rank}`;
+    lbSubmitEl.disabled = true;
+    try {
+      const res = await submitScore({ name, score: pendingScore, mode: pendingMode, token: pendingToken });
+      if (res === null) {
+        lbResultEl.textContent = 'Offline — score not submitted';
+      } else if (res.error === 'rate-limited') {
+        lbResultEl.textContent = 'Rate limited — try again later';
+      } else if (res.error) {
+        lbResultEl.textContent = 'Score rejected — start a new game';
+      } else {
+        lbResultEl.textContent = `Rank #${res.rank}`;
+      }
+    } finally {
+      lbSubmitEl.disabled = false;
     }
   });
 
@@ -168,6 +173,10 @@ function bindOverlay() {
       if (next && loadProgress().unlocked >= next.id) startChallenge(next.id);
       else startChallenge(routeLevelId);
     } else {
+      pendingToken = null;
+      requestSession().then((t) => {
+        pendingToken = t;
+      });
       game.restart();
     }
   });

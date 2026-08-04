@@ -92,13 +92,13 @@ export function ensureIndexes() {
 
 export async function mintSession({ sid, exp }) {
   const client = await getClient();
-  await client.db(DB_NAME).collection(SESSIONS_COLLECTION).insertOne({ _id: sid, exp, used: false });
+  await client.db(DB_NAME).collection(SESSIONS_COLLECTION).insertOne({ _id: sid, exp: new Date(exp), used: false });
 }
 
 export async function consumeSession(sid) {
   const client = await getClient();
   const doc = await client.db(DB_NAME).collection(SESSIONS_COLLECTION).findOneAndUpdate(
-    { _id: sid, used: false, exp: { $gt: Date.now() } },
+    { _id: sid, used: false, exp: { $gt: new Date() } },
     { $set: { used: true } },
     { returnDocument: 'after' }
   );
@@ -108,9 +108,9 @@ export async function consumeSession(sid) {
 export async function dbRateLimit(scope, key, max, windowMs) {
   const client = await getClient();
   const col = client.db(DB_NAME).collection(RATE_LIMIT_COLLECTION);
-  const since = Date.now() - windowMs;
+  const since = new Date(Date.now() - windowMs);
   const count = await col.countDocuments({ scope, key, ts: { $gt: since } });
   if (count >= max) return true;
-  await col.insertOne({ scope, key, ts: Date.now() });
+  await col.insertOne({ scope, key, ts: new Date() });
   return false;
 }

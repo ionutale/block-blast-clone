@@ -59,14 +59,14 @@ export default async function handler(req, res) {
         res.status(401).json({ error: 'invalid or expired session' });
         return;
       }
-      const consumed = await consumeSession(session.sid);
-      if (!consumed) {
-        res.status(401).json({ error: 'invalid or expired session' });
-        return;
-      }
       const limited = await dbRateLimit('submit', clientIp(req), 10, 60 * 60 * 1000);
       if (limited) {
         res.status(429).json({ error: 'rate limited' });
+        return;
+      }
+      const consumed = await consumeSession(session.sid);
+      if (!consumed) {
+        res.status(401).json({ error: 'invalid or expired session' });
         return;
       }
       const data = await submitLeaderboardScore({ name, score, mode });
